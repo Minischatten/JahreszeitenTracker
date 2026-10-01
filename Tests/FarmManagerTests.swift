@@ -33,32 +33,27 @@ struct FarmManagerTests {
         check(manager.state(for: manager.farms[0], at: a.savedAt) == SeasonState(seasonIndex: 0, remaining: 400), "first farm state")
         manager.selectedFarmIdentity = manager.farms[1].identity
         check(manager.state(for: manager.farms[1], at: b.savedAt) == SeasonState(seasonIndex: 3, remaining: 100), "second farm independent state")
-        manager.viewMode = .overview
         var publications = 0
         let subscription = manager.objectWillChange.sink { publications += 1 }
         let persistedBefore = defaults.data(forKey: "ft2FarmCatalog_v2")
         for _ in 0..<10 {
-            manager.viewMode = .overview
             manager.selectedFarmIdentity = manager.selectedFarmIdentity
             manager.selectedFarmIdentity = nil
         }
         check(publications == 0, "picker no-op and transient nil selections do not publish")
         check(defaults.data(forKey: "ft2FarmCatalog_v2") == persistedBefore, "picker no-op leaves persistence untouched")
-        manager.viewMode = .single
-        check(publications == 1, "real mode change publishes once")
-        manager.viewMode = .overview
         manager.selectedFarmIdentity = manager.farms[0].identity
-        check(publications == 3, "real mode and farm changes each publish once")
+        check(publications == 1, "real farm selection publishes once")
         manager.selectedFarmIdentity = manager.farms[1].identity
         subscription.cancel()
         let reloaded = FarmManager(defaults: defaults)
-        check(reloaded.selectedFarmIdentity == manager.farms[1].identity && reloaded.viewMode == .overview, "identity selection and mode persisted")
+        check(reloaded.selectedFarmIdentity == manager.farms[1].identity, "identity selection persisted")
         check(reloaded.farms[1].automaticReference == b, "reference persisted")
         check(defaults.data(forKey: "savedFarmsData_v1") == old, "obsolete key neither read nor rewritten")
         var persisted = try JSONSerialization.jsonObject(with: defaults.data(forKey: "ft2FarmCatalog_v2")!) as! [String: Any]
         persisted["legacyFarms"] = [["name": "obsolete"]]
         persisted.removeValue(forKey: "selectedFarmIdentity")
-        persisted.removeValue(forKey: "preferredViewMode")
+        persisted["preferredViewMode"] = "overview"
         persisted["selectedFarmID"] = manager.farms[1].id
         var oldFarms = persisted["farms"] as! [[String: Any]]
         for i in oldFarms.indices {
@@ -76,8 +71,8 @@ struct FarmManagerTests {
               && cleaned.selectedFarmIdentity == manager.farms[1].identity
               && cleaned.catalog.sources == manager.catalog.sources, "existing identities bookmarks references and selection preserved")
         check(cleaned.state(for: cleaned.farms[1], at: b.savedAt) == b.state(at: b.savedAt), "old manual state cannot affect automatic countdown")
-        check(cleaned.viewMode == .single, "new mode defaults safely for existing catalog")
         let cleanJSON = try JSONSerialization.jsonObject(with: defaults.data(forKey: "ft2FarmCatalog_v2")!) as! [String: Any]
+        check(cleanJSON["preferredViewMode"] == nil, "obsolete view mode removed without losing identities or references")
         check(cleanJSON["legacyFarms"] == nil, "manager persist removes archive")
         let encodedFarms = cleanJSON["farms"] as! [[String: Any]]
         check(encodedFarms.allSatisfy { farm in

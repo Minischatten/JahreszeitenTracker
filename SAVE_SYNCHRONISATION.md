@@ -2,18 +2,19 @@
 
 ## Bedienung
 
-„FT2-Ordner…“ einmal auswählen und den übergeordneten Speicherordner freigeben,
+In den Einstellungen „Spielstandordner auswählen …“ wählen und den übergeordneten Speicherordner freigeben,
 der `farms.mlk` und den Unterordner `farms/` enthält. Der bisher ausgewählte
 Bereichsordner allein reicht für Farmnamen und Identitäten nicht aus.
 
 Die Hauptansicht zeigt bei einer registrierten Hauptfarm direkt deren Karte.
-Ab zwei Farmen erscheinen die Modi „Einzelfarm“ und „Übersicht“; die Übersicht
+Ab zwei Farmen startet die Ansicht in der Übersicht mit vollständig anklickbaren
+Karten. „Alle Farmen“ führt aus einer geöffneten Farm zurück. Die Übersicht
 verwendet ein adaptives scrollbares LazyVGrid. Es gibt keine feste Kartenanzahl.
 Die Einzelfarmkarte enthält Saisonbild, Saisonname, Countdown, kurzen Status und
 die nächste Saison. Alle vier Saisonbilder stammen aus den vorhandenen Assets.
 
 Über das Zahnrad oder das native Einstellungen-Menü öffnet sich SettingsView.
-Nur dort stehen Speicherort-Auswahl, „Trennen“ und ausführliche Quellenmeldungen.
+Nur dort stehen Spielstandordner-Auswahl, „Zugriff entfernen“ und der Zugriffsstatus.
 Namen werden ausschließlich für die Anzeige getrimmt. Keine technischen Save-
 Informationen werden dauerhaft auf den Farmkarten angezeigt.
 
@@ -48,13 +49,12 @@ v2-Katalog werden beim Dekodieren ignoriert und beim nächsten Speichern nicht
 mehr ausgegeben. Aktive Farmen, Quellen, Auswahl und Referenzen bleiben erhalten. Ein noch vorhandener alter v1-UserDefaults-Schlüssel ist
 wirkungslos; die App löscht ihn nicht eigenständig.
 
-Ansichtsmodus und Auswahl werden unter demselben Katalogschlüssel gespeichert.
-Die Auswahl verwendet die komplette FarmIdentity. Ein vorhandener älterer
-selectedFarmID-Wert wird beim Laden anhand des bestehenden Datensatzes in diese
-Identität überführt. Fehlende UI-Felder erhalten sichere Standardwerte, ohne
-Referenzen oder Bookmarks zu verlieren. Bei einer Farm ist der effektive Modus
-immer Einzelansicht; eine gespeicherte Übersichtsvorliebe bleibt für spätere
-mehrere Farmen erhalten.
+Die Auswahl verwendet weiterhin die komplette persistierte FarmIdentity.
+Die Navigation selbst ist lokaler SwiftUI-Zustand und startet bei mehreren Farmen
+in der Übersicht. preferredViewMode wird nicht mehr gelesen oder geschrieben;
+vorhandene Werte werden beim erneuten Speichern entfernt, ohne Farmen, Quellen
+oder Referenzen zu verändern. Ein vorhandener älterer selectedFarmID-Wert wird
+beim Laden anhand des bestehenden Datensatzes in die FarmIdentity überführt.
 
 Registrierung, momentane Verfügbarkeit und erfolgreich geprüfte Referenz werden
 getrennt behandelt. Ein kompletter erfolgreicher Metadatenscan bestimmt die

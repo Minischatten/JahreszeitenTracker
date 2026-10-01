@@ -215,21 +215,27 @@ struct TrackerCoreTests {
               && withoutArchive.activeSourceID == restored.activeSourceID, "existing catalog ignores legacy archive without losing active data")
         let cleanedJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(withoutArchive)) as! [String: Any]
         check(cleanedJSON["legacyFarms"] == nil, "legacy archive not serialized")
-        catalog.preferredViewMode = .overview
-        check(catalog.effectiveViewMode == .single, "removed farms do not create overview controls")
+        check(catalog.visibleFarms.isEmpty && FarmNavigation().detail(in: catalog.visibleFarms) == nil, "removed farms do not create overview controls")
         let previousIdentity = catalog.farms[0].identity
         catalog.selectSource(path: temp.path, bookmark: Data([2]))
         check(catalog.activeSourceID == source && catalog.farms[0].identity == previousIdentity, "source reselect keeps identity")
         catalog.selectSource(path: missing.path, bookmark: Data([3]))
         catalog.merge([FarmReading(metadata: metadata[0], reference: reference, message: "")], sourceID: catalog.activeSourceID!)
         check(catalog.farms.count == 4, "different source keeps same slot separate")
-        check(catalog.visibleFarms.count == 1 && catalog.effectiveViewMode == .single, "one farm forces single mode")
+        check(catalog.visibleFarms.count == 1 && FarmNavigation().detail(in: catalog.visibleFarms) != nil, "one farm forces single mode")
         let originalID = catalog.activeSourceID!
         catalog.merge([
             FarmReading(metadata: metadata[0], reference: reference, message: ""),
             FarmReading(metadata: metadata[1], reference: reference, message: "")
         ], sourceID: originalID)
-        check(catalog.visibleFarms.count == 2 && catalog.effectiveViewMode == .overview, "multiple farms use remembered overview")
+        check(catalog.visibleFarms.count == 2 && FarmNavigation().detail(in: catalog.visibleFarms) == nil, "multiple farms start in overview")
+        var navigation = FarmNavigation()
+        navigation.open(catalog.visibleFarms[1].identity!)
+        check(navigation.detail(in: catalog.visibleFarms)?.identity == catalog.visibleFarms[1].identity, "card opens exact identity")
+        navigation.back()
+        check(navigation.detail(in: catalog.visibleFarms) == nil, "back restores overview")
+        navigation.open(FarmIdentity(sourceID: UUID(), slotIndex: 0, creationTime: 0))
+        check(navigation.detail(in: catalog.visibleFarms) == nil, "missing identity safely shows overview")
         check(FarmSyncState.forFarm(catalog.visibleFarms[0]) == .synchronized, "verified reference synced")
         catalog.merge([FarmReading(metadata: metadata[0], reference: nil, message: "read error")], sourceID: originalID)
         check(catalog.visibleFarms.count == 1 && FarmSyncState.forFarm(catalog.visibleFarms[0]) == .lastStand, "failed area read keeps countdown")

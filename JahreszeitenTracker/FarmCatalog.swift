@@ -45,11 +45,10 @@ nonisolated struct FarmCatalog: Codable, Sendable {
     var sources: [TrackerSource] = []
     var activeSourceID: UUID?
     var selectedFarmIdentity: FarmIdentity?
-    var preferredViewMode: FarmViewMode = .single
     var displaySourceID: UUID?
 
     private enum CodingKeys: String, CodingKey {
-        case farms, sources, activeSourceID, selectedFarmIdentity, preferredViewMode, displaySourceID
+        case farms, sources, activeSourceID, selectedFarmIdentity, displaySourceID
         case selectedFarmID // Read the existing selection once; never write this key again.
     }
     init() {}
@@ -62,7 +61,6 @@ nonisolated struct FarmCatalog: Codable, Sendable {
         if selectedFarmIdentity == nil, let oldID = try container.decodeIfPresent(Int.self, forKey: .selectedFarmID) {
             selectedFarmIdentity = farms.first(where: { $0.id == oldID })?.identity
         }
-        preferredViewMode = try container.decodeIfPresent(FarmViewMode.self, forKey: .preferredViewMode) ?? .single
         displaySourceID = try container.decodeIfPresent(UUID.self, forKey: .displaySourceID) ?? activeSourceID ?? sources.last?.id
     }
     func encode(to encoder: Encoder) throws {
@@ -71,14 +69,12 @@ nonisolated struct FarmCatalog: Codable, Sendable {
         try container.encode(sources, forKey: .sources)
         try container.encodeIfPresent(activeSourceID, forKey: .activeSourceID)
         try container.encodeIfPresent(selectedFarmIdentity, forKey: .selectedFarmIdentity)
-        try container.encode(preferredViewMode, forKey: .preferredViewMode)
         try container.encodeIfPresent(displaySourceID, forKey: .displaySourceID)
     }
     var visibleFarms: [FarmData] {
         let sourceID = activeSourceID ?? displaySourceID
         return farms.filter { $0.identity?.sourceID == sourceID && $0.registered != false }
     }
-    var effectiveViewMode: FarmViewMode { visibleFarms.count < 2 ? .single : preferredViewMode }
 
     static func restored(current: Data?, now: Date) -> FarmCatalog {
         if let current, var catalog = try? JSONDecoder().decode(FarmCatalog.self, from: current),
@@ -155,8 +151,15 @@ nonisolated struct FarmCatalog: Codable, Sendable {
     }
 }
 
-nonisolated enum FarmViewMode: String, Codable, CaseIterable {
-    case single, overview
+// Navigation is transient UI state; persisted identities remain in the catalog.
+nonisolated struct FarmNavigation {
+    var openedIdentity: FarmIdentity?
+    func detail(in farms: [FarmData]) -> FarmData? {
+        if farms.count == 1 { return farms.first }
+        return farms.first(where: { $0.identity != nil && $0.identity == openedIdentity })
+    }
+    mutating func open(_ identity: FarmIdentity) { openedIdentity = identity }
+    mutating func back() { openedIdentity = nil }
 }
 
 nonisolated enum FarmSyncState {

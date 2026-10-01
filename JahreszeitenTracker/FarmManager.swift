@@ -6,6 +6,7 @@ import AppKit
 final class FarmManager: ObservableObject {
     @Published var catalog: FarmCatalog { didSet { saveCatalog() } }
     @Published private var sourceStatus = ""
+    @Published private(set) var saveFolderAvailable = false
     private let defaults: UserDefaults
     private let key = "ft2FarmCatalog_v2"
     private var pollingTask: Task<Void, Never>?
@@ -42,17 +43,10 @@ final class FarmManager: ObservableObject {
             catalog.selectedFarmIdentity = newValue
         }
     }
-    var viewMode: FarmViewMode {
-        get { catalog.preferredViewMode }
-        set {
-            guard newValue != catalog.preferredViewMode else { return }
-            catalog.preferredViewMode = newValue
-        }
-    }
     var settingsStatus: String {
-        if !sourceStatus.isEmpty { return sourceStatus }
-        return hasSaveFolder ? loc("Der Speicherort wird automatisch geprüft.", "The storage folder is checked automatically.")
-            : loc("Kein Speicherort verbunden. Vorhandene Referenzen bleiben erhalten.", "No storage folder connected. Existing references are retained.")
+        if !hasSaveFolder { return loc("Kein Spielstandordner ausgewählt", "No save folder selected") }
+        return saveFolderAvailable ? loc("Spielstandordner verfügbar", "Save folder available")
+            : loc("Spielstandordner derzeit nicht verfügbar", "Save folder currently unavailable")
     }
     var sourcePath: String? { catalog.sources.first(where: { $0.id == catalog.activeSourceID })?.path }
     func state(for farm: FarmData, at date: Date) -> SeasonState? {
@@ -66,12 +60,13 @@ final class FarmManager: ObservableObject {
         panel.canCreateDirectories = false
         panel.allowsMultipleSelection = false
         panel.prompt = loc("Lesenden Zugriff erlauben", "Allow read access")
-        panel.message = loc("Übergeordneten Ordner mit farms.mlk und farms/ auswählen. FT2-Dateien werden ausschließlich gelesen.",
-                            "Select the parent folder containing farms.mlk and farms/. FT2 files are read only.")
+        panel.message = loc("Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Spielstände werden ausschließlich gelesen.",
+                            "Select the folder where Farm Together 2 stores your saves. Saves are read only.")
         guard panel.runModal() == .OK, let folder = panel.url else { return }
         do {
             let bookmark = try folder.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                                                     includingResourceValuesForKeys: nil, relativeTo: nil)
+            saveFolderAvailable = false
             catalog.selectSource(path: folder.standardizedFileURL.path, bookmark: bookmark)
             sourceStatus = loc("FT2: Ordner ausgewählt; Prüfung läuft", "FT2: folder selected; checking")
             Task { await scanSources() }
@@ -79,6 +74,7 @@ final class FarmManager: ObservableObject {
     }
 
     func disconnectSaveFolder() {
+        saveFolderAvailable = false
         catalog.activeSourceID = nil
         for i in catalog.farms.indices { catalog.farms[i].available = false }
         sourceStatus = loc("FT2 getrennt; Referenzen bleiben erhalten", "FT2 disconnected; references retained")
@@ -98,6 +94,7 @@ final class FarmManager: ObservableObject {
         }.value
         guard catalog.activeSourceID == sourceID,
               catalog.sources.first(where: { $0.id == sourceID })?.bookmark == source.bookmark else { return }
+        saveFolderAvailable = result.readings != nil
         if let refreshed = result.refreshedBookmark,
            let index = catalog.sources.firstIndex(where: { $0.id == sourceID }) {
             catalog.sources[index].bookmark = refreshed

@@ -12,7 +12,7 @@ struct JahreszeitenTrackerApp: App {
     @StateObject private var manager = FarmManager()
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("JahreszeitenTracker") {
             ContentView()
                 .environmentObject(manager)
         }

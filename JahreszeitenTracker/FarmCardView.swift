@@ -81,6 +81,7 @@ struct FarmCardView: View {
             Text(statusText(status))
         } icon: {
             Image(systemName: statusIcon(status))
+                .foregroundStyle(status == .synchronized ? Color.green : Color.secondary)
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -94,7 +95,7 @@ struct FarmCardView: View {
     }
     private func statusIcon(_ status: FarmSyncState) -> String {
         switch status {
-        case .synchronized: return "checkmark.circle"
+        case .synchronized: return "checkmark.circle.fill"
         case .lastStand: return "clock"
         case .waiting: return "hourglass"
         }
