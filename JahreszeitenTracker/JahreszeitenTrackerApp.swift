@@ -16,5 +16,10 @@ struct JahreszeitenTrackerApp: App {
             ContentView()
                 .environmentObject(manager)
         }
+        .defaultSize(width: 640, height: 780)
+        Settings {
+            SettingsView()
+                .environmentObject(manager)
+        }
     }
 }

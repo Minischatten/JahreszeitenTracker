@@ -6,17 +6,28 @@
 der `farms.mlk` und den Unterordner `farms/` enthält. Der bisher ausgewählte
 Bereichsordner allein reicht für Farmnamen und Identitäten nicht aus.
 
-Die provisorische Auswahl zeigt alle erkannten Hauptfarmen mit Namen und Slot-ID.
-Nicht verfügbare Farmen bleiben mit ihrer letzten Referenz sichtbar. Keine große
-UI-Neugestaltung; keine festen vier Trackerplätze und kein manuelles Slot-Menü.
-Namen werden ausschließlich für die Anzeige getrimmt; der Originalwert bleibt
-im Tracker-Datensatz erhalten. Der Tracker schreibt Namen niemals nach FT2 zurück.
+Die Hauptansicht zeigt bei einer registrierten Hauptfarm direkt deren Karte.
+Ab zwei Farmen erscheinen die Modi „Einzelfarm“ und „Übersicht“; die Übersicht
+verwendet ein adaptives scrollbares LazyVGrid. Es gibt keine feste Kartenanzahl.
+Die Einzelfarmkarte enthält Saisonbild, Saisonname, Countdown, kurzen Status und
+die nächste Saison. Alle vier Saisonbilder stammen aus den vorhandenen Assets.
+
+Über das Zahnrad oder das native Einstellungen-Menü öffnet sich SettingsView.
+Nur dort stehen Speicherort-Auswahl, „Trennen“ und ausführliche Quellenmeldungen.
+Namen werden ausschließlich für die Anzeige getrimmt. Keine technischen Save-
+Informationen werden dauerhaft auf den Farmkarten angezeigt.
 
 Alle zehn Sekunden wird die aktive Speicherquelle im Hintergrund gelesen.
 Neue Hauptfarmen und weitere Bereiche werden dabei automatisch berücksichtigt.
-„Trennen“ beendet die Prüfung und erhält alle Referenzen. Manuelle Korrekturen
-bleiben pro Hauptfarm unabhängig. Wie bisher setzt nur ein tatsächlich neuerer
-Save die Korrektur zurück; eine Umbenennung oder ein gleicher Save tut dies nicht.
+„Trennen“ beendet die Prüfung und erhält alle Referenzen. Die letzte Quelle
+bleibt für die Anzeige bekannt; ihre Countdowns laufen weiter.
+
+Manuelle Saisonwahl, Slider, Starten, Sekundenkorrekturen und „Jetzt gestartet“
+sind vollständig entfernt, einschließlich ihrer Modellfelder und Methoden.
+Eine vorhandene gültige automatische Referenz ist die einzige Saisonzeitbasis.
+Ohne Referenz zeigt die Karte „Warte auf Spielstand“ statt einer erfundenen Saison.
+Alte manuelle Werte im gespeicherten Katalog werden ignoriert und beim Speichern
+nicht erneut geschrieben. Es bleibt kein manueller Fallback oder Offset aktiv.
 
 ## Identität und Persistenz
 
@@ -24,7 +35,7 @@ Die FT2-Identität ist `(sourceID, slotIndex, creation_time)`. Die Speicherquell
 besitzt eine persistierte UUID, einen Pfad und ein ausschließlich lesendes
 Security-Scoped-Bookmark. Erneute Auswahl desselben normalisierten Pfads verwendet
 wieder dieselbe Quellen-ID. Bookmark-Auffrischung verändert keine Farmidentität.
-Eine Farmumbenennung ändert nur `name`, nicht Identität, Referenz oder Korrektur.
+Eine Farmumbenennung ändert nur `name`, nicht Identität oder Referenz.
 Doppelte Namen sind zulässig. Eine wiederverwendete Slot-ID mit anderer
 Erstellungszeit erzeugt einen separaten Datensatz; der alte bleibt erhalten.
 Zusätzlich sind interne Tracker-IDs stabile, nicht als FT2-Slot interpretierte IDs.
@@ -34,13 +45,28 @@ Die alte Vier-Farmen-Konfiguration unter `savedFarmsData_v1` wird nicht mehr
 verwendet, gelesen oder neu geschrieben. Es gibt keine Legacy-Migration und
 keine Archivmeldung. Bereits vorhandene `legacyFarms`-Felder in einem gültigen
 v2-Katalog werden beim Dekodieren ignoriert und beim nächsten Speichern nicht
-mehr ausgegeben. Aktive Farmen, Quellen, Auswahl, Referenzen und Korrekturen
-bleiben erhalten. Ein noch vorhandener alter v1-UserDefaults-Schlüssel ist
+mehr ausgegeben. Aktive Farmen, Quellen, Auswahl und Referenzen bleiben erhalten. Ein noch vorhandener alter v1-UserDefaults-Schlüssel ist
 wirkungslos; die App löscht ihn nicht eigenständig.
+
+Ansichtsmodus und Auswahl werden unter demselben Katalogschlüssel gespeichert.
+Die Auswahl verwendet die komplette FarmIdentity. Ein vorhandener älterer
+selectedFarmID-Wert wird beim Laden anhand des bestehenden Datensatzes in diese
+Identität überführt. Fehlende UI-Felder erhalten sichere Standardwerte, ohne
+Referenzen oder Bookmarks zu verlieren. Bei einer Farm ist der effektive Modus
+immer Einzelansicht; eine gespeicherte Übersichtsvorliebe bleibt für spätere
+mehrere Farmen erhalten.
+
+Registrierung, momentane Verfügbarkeit und erfolgreich geprüfte Referenz werden
+getrennt behandelt. Ein kompletter erfolgreicher Metadatenscan bestimmt die
+Registrierung. Temporäre Lesefehler ändern sie nicht und blenden deshalb keine
+zuletzt registrierte Farm aus. Erst ein erfolgreicher Scan ohne diese Identität
+blendet sie aus. Auf Karten: „Synchronisiert“ für eine erfolgreich geprüfte
+Referenz, „Letzter Stand“ bei fortgerechneter Referenz ohne aktuelle Bestätigung,
+„Warte auf Spielstand“ ohne Referenz. Diese Flags beeinflussen keine Zeitrechnung.
 
 Ein erneuter erfolgreicher Scan aktualisiert den Namen auch ohne neuen Bereichs-
 Save. Farmen, die in einem vollständigen gültigen Metadaten-Snapshot fehlen,
-werden als nicht verfügbar markiert, aber nicht gelöscht. Fehlende oder defekte
+werden als nicht registriert markiert, aus der normalen Übersicht ausgeblendet, aber nicht gelöscht. Fehlende oder defekte
 Metadaten verändern keine Referenzen. Ein anderer ausgewählter Quellordner erhält
 eine eigene Identität; alte Datensätze bleiben erhalten. Ein umbenannter Ordner
 funktioniert über sein Bookmark weiter; eine manuelle Auswahl unter einem neuen
@@ -141,7 +167,7 @@ Synthetische Testdateien werden nur in frischen temporären Testordnern erzeugt.
 Die optionale Variante liest historische Bereichssaves und den echten Katalog,
 prüft die Identitäten 0 und 16 sowie die Hashes aller gelesenen Dateien vorher und
 nachher. Der zweite Testsatz prüft den Manager mit einer isolierten UserDefaults-
-Suite, einschließlich Persistenz, Entfernung alter Archivfelder und unabhängiger Korrekturen.
+Suite, einschließlich Persistenz, Entfernung manueller Altzustände und unabhängiger Saisonreferenzen.
 
 Der macOS-Build prüft die App-Integration. Auswahl, Wiederaufnahme des Bookmarks
 und Sandbox-Zugriff müssen zusätzlich im normalen signierten Xcode-App-Lauf auf

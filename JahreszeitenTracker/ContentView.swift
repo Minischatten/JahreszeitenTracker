@@ -1,23 +1,11 @@
-//
-//  ContentView.swift
-//  JahreszeitenTracker
-//
-//  JahreszeitenTracker project.
-//
 import SwiftUI
-import Combine
 
-// MARK: - Sprach-System (DE / EN)
 nonisolated var isGermanSystem: Bool {
     let lang = Locale.preferredLanguages.first ?? Locale.current.identifier
     return lang.hasPrefix("de")
 }
+nonisolated func loc(_ de: String, _ en: String) -> String { isGermanSystem ? de : en }
 
-nonisolated func loc(_ de: String, _ en: String) -> String {
-    return isGermanSystem ? de : en
-}
-
-// MARK: - Jahreszeiten Model
 extension Season {
     func name(isGerman: Bool = isGermanSystem) -> String {
         switch self {
@@ -27,7 +15,6 @@ extension Season {
         case .winter: return isGerman ? "Winter" : "Winter"
         }
     }
-    
     var next: Season {
         switch self {
         case .spring: return .summer
@@ -36,185 +23,108 @@ extension Season {
         case .winter: return .spring
         }
     }
+    var assetName: String {
+        switch self {
+        case .spring: return "SeasonSpring"
+        case .summer: return "SeasonSummer"
+        case .autumn: return "SeasonAutumn"
+        case .winter: return "SeasonWinter"
+        }
+    }
 }
 
-// MARK: - UI Hauptansicht
 struct ContentView: View {
     @EnvironmentObject private var manager: FarmManager
-    
-    @State private var currentSeason: Season = .spring
-    @State private var timeRemainingInCurrentSeason: TimeInterval = 0
-    
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    
-    var currentFarm: FarmData {
-        manager.farms[manager.selectedFarmIndex]
-    }
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            // Titel
-            Text(loc("Jahreszeiten Tracker", "Season Tracker"))
-                .font(.title2)
-                .bold()
-            
-            HStack(spacing: 6) {
-                Button(loc("FT2-Ordner…", "FT2 folder…")) { manager.chooseSaveFolder() }
-                if manager.hasSaveFolder {
-                    Button(loc("Trennen", "Disconnect")) { manager.disconnectSaveFolder() }
-                }
-            }
-            .controlSize(.small)
-            Text(manager.syncStatus)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
-                .help(manager.syncStatus)
 
-            if !manager.farms.isEmpty {
-                Picker(loc("Hauptfarm", "Main farm"), selection: $manager.selectedFarmIndex) {
-                    ForEach(manager.farms.indices, id: \.self) { index in
-                        let farm = manager.farms[index]
-                        Text("\(farm.displayName) · ID \(farm.identity!.slotIndex)" + (farm.available == true ? "" : loc(" (nicht verfügbar)", " (unavailable)")))
-                            .tag(index)
-                    }
-                }
-                Divider()
-            
-                // HAUPTANZEIGE / EINSTELLUNGEN
-                if currentFarm.isTimerRunning {
-                    // RUNNING VIEW
-                    VStack(spacing: 10) {
-                        Text(loc("Aktuelle Jahreszeit:", "Current Season:"))
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                    
-                        Text(currentSeason.name())
-                            .font(.system(size: 28, weight: .heavy, design: .rounded))
-                            .foregroundColor(colorForSeason(currentSeason))
-                    
-                        // Empirische Testkompensation ausschließlich für die Countdown-Anzeige.
-                        Text("\(loc("Nächster Wechsel in:", "Next change in:")) \(formatTime(min(timeRemainingInCurrentSeason + 2, 1020)))")
-                            .font(.title3)
-                            .monospacedDigit()
-                    
-                        // FEINJUSTIERUNG (SEKUNDEN-BUTTONS)
-                        VStack(spacing: 6) {
-                            Text(loc("Feinjustierung:", "Fine Tuning:"))
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                        
-                            HStack(spacing: 8) {
-                                Button("-5s") { adjustTime(by: -5) }
-                                Button("-1s") { adjustTime(by: -1) }
-                                Button("+1s") { adjustTime(by: 1) }
-                                Button("+5s") { adjustTime(by: 5) }
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                        
-                            Button(loc("Jetzt gestartet", "Started just now")) {
-                                syncToCurrentSeasonStart()
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .help(loc("Setzt die verbleibende Zeit der aktuellen Jahreszeit wieder exakt auf 17:00", "Resets remaining time of current season back to 17:00"))
-                        }
-                        .padding(.top, 2)
-                    
-                        Button(loc("Zurücksetzen / Einstellungen", "Reset / Settings")) {
-                            manager.farms[manager.selectedFarmIndex].isTimerRunning = false
-                        }
-                        .padding(.top, 4)
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.black.opacity(0.05))
-                    .cornerRadius(12)
-                
-                } else {
-                    // CONFIGURATION VIEW
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text(loc("Start-Jahreszeit:", "Starting Season:"))
-                            Picker("", selection: $manager.farms[manager.selectedFarmIndex].startSeason) {
-                                ForEach(Season.allCases) { season in
-                                    Text(season.name()).tag(season)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                    
-                        VStack(alignment: .leading) {
-                            Text("\(loc("Verbleibende Zeit für Start-Jahreszeit:", "Remaining time for starting season:")) \(Int(currentFarm.initialRemainingMinutes)) Min.")
-                                .font(.subheadline)
-                            Slider(value: $manager.farms[manager.selectedFarmIndex].initialRemainingMinutes, in: 1...17, step: 1)
-                        }
-                    
-                        Button(action: startTimer) {
-                            Text(loc("Starten", "Start"))
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .tint(.green)
-                    }
-                    .padding(12)
+    var body: some View {
+        VStack(spacing: 0) {
+            if manager.visibleFarms.count > 1 {
+                FarmNavigationView(manager: manager)
+            }
+
+            if manager.visibleFarms.isEmpty {
+                ContentUnavailableView {
+                    Label(loc("Keine Hauptfarm", "No main farm"), systemImage: "leaf")
+                } description: {
+                    Text(manager.hasSaveFolder
+                         ? loc("Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier.", "Your farms appear here when a valid save is available.")
+                         : loc("Verbinde deinen FT2-Speicherort in den Einstellungen.", "Connect your FT2 storage folder in Settings."))
                 }
             } else {
-                Text(loc("Noch keine FT2-Hauptfarm erkannt.", "No FT2 main farm detected yet."))
-                    .foregroundStyle(.secondary)
+                // One shared wall-clock sample for all cards; no accumulated timer time.
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    let now = Date()
+                    ScrollView {
+                        if manager.catalog.effectiveViewMode == .overview {
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 16)], spacing: 16) {
+                                ForEach(manager.visibleFarms) { farm in
+                                    FarmCardView(farm: farm, state: manager.state(for: farm, at: now), compact: true)
+                                }
+                            }
+                            .padding(20)
+                        } else if let farm = manager.selectedFarm {
+                            FarmCardView(farm: farm, state: manager.state(for: farm, at: now), compact: false)
+                                .frame(maxWidth: 640)
+                                .frame(maxWidth: .infinity)
+                                .padding(20)
+                        }
+                    }
+                }
             }
         }
-        .padding()
-        .frame(width: 480, height: 425)
-        .onAppear(perform: updateCurrentSeasonLogik)
-        .onChange(of: manager.farms) { _, _ in updateCurrentSeasonLogik() }
-        .onChange(of: manager.selectedFarmIndex) { _, _ in updateCurrentSeasonLogik() }
-        .onReceive(timer) { _ in
-            updateCurrentSeasonLogik()
+        .frame(minWidth: 380, minHeight: 440)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .navigationTitle(loc("Jahreszeiten Tracker", "Season Tracker"))
+        .toolbar {
+            ToolbarItem(placement: .automatic) {
+                SettingsLink {
+                    Image(systemName: "gearshape")
+                }
+                .help(loc("Einstellungen", "Settings"))
+                .accessibilityLabel(loc("Einstellungen", "Settings"))
+            }
         }
     }
-    
-    // MARK: - Logik & Methoden
-    func updateCurrentSeasonLogik() {
-        guard manager.farms.indices.contains(manager.selectedFarmIndex) else { return }
-        let farm = currentFarm
-        guard farm.isTimerRunning else { return }
-        
-        let state = manager.state(at: Date())
-        self.currentSeason = Season.allCases[state.seasonIndex]
-        self.timeRemainingInCurrentSeason = state.remaining
+}
+
+// Native pickers own local selection state. Persist user changes through SwiftUI's
+// change lifecycle instead of publishing the catalog from a control's Binding setter.
+private struct FarmNavigationView: View {
+    @ObservedObject var manager: FarmManager
+    @State private var viewMode: FarmViewMode
+    @State private var selectedFarmIdentity: FarmIdentity?
+
+    init(manager: FarmManager) {
+        self.manager = manager
+        _viewMode = State(initialValue: manager.viewMode)
+        _selectedFarmIdentity = State(initialValue: manager.selectedFarmIdentity)
     }
 
-    func adjustTime(by seconds: TimeInterval) {
-        manager.adjustTime(by: seconds)
-        updateCurrentSeasonLogik()
-    }
-
-    func syncToCurrentSeasonStart() {
-        manager.syncToCurrentSeasonStart()
-        updateCurrentSeasonLogik()
-    }
-
-    func startTimer() {
-        manager.startManually()
-        updateCurrentSeasonLogik()
-    }
-    
-    func formatTime(_ time: TimeInterval) -> String {
-        let minutes = Int(time) / 60
-        let seconds = Int(time) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
-    }
-    
-    func colorForSeason(_ season: Season) -> Color {
-        switch season {
-        case .spring: return .green
-        case .summer: return .orange
-        case .autumn: return .brown
-        case .winter: return .blue
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Picker(loc("Ansicht", "View"), selection: $viewMode) {
+                    Text(loc("Einzelfarm", "Single farm")).tag(FarmViewMode.single)
+                    Text(loc("Übersicht", "Overview")).tag(FarmViewMode.overview)
+                }
+                .pickerStyle(.segmented)
+                .frame(maxWidth: 280)
+                Spacer(minLength: 0)
+            }
+            .padding()
+            if viewMode == .single {
+                Picker(loc("Hauptfarm", "Main farm"), selection: $selectedFarmIdentity) {
+                    ForEach(manager.visibleFarms) { farm in
+                        Text(farm.displayName).tag(farm.identity)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 12)
+            }
         }
+        .onChange(of: viewMode) { _, value in manager.viewMode = value }
+        .onChange(of: selectedFarmIdentity) { _, value in manager.selectedFarmIdentity = value }
+        .onChange(of: manager.viewMode) { _, value in viewMode = value }
+        .onChange(of: manager.selectedFarmIdentity) { _, value in selectedFarmIdentity = value }
     }
 }

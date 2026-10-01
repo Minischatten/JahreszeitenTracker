@@ -5,9 +5,6 @@ import AppKit
 @MainActor
 final class FarmManager: ObservableObject {
     @Published var catalog: FarmCatalog { didSet { saveCatalog() } }
-    @Published var selectedFarmIndex = 0 {
-        didSet { catalog.selectedFarmID = farms.indices.contains(selectedFarmIndex) ? farms[selectedFarmIndex].id : nil }
-    }
     @Published private var sourceStatus = ""
     private let defaults: UserDefaults
     private let key = "ft2FarmCatalog_v2"
@@ -22,9 +19,6 @@ final class FarmManager: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         catalog = FarmCatalog.restored(current: defaults.data(forKey: key), now: Date())
-        if let id = catalog.selectedFarmID, let index = catalog.farms.firstIndex(where: { $0.id == id }) {
-            selectedFarmIndex = index
-        }
         saveCatalog()
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -35,22 +29,34 @@ final class FarmManager: ObservableObject {
     }
 
     var hasSaveFolder: Bool { catalog.activeSourceID != nil }
-    var syncStatus: String {
-        if !sourceStatus.isEmpty { return sourceStatus }
-        guard farms.indices.contains(selectedFarmIndex) else {
-            return loc("FT2-Speicherordner auswählen", "Select FT2 storage folder")
-        }
-        return farms[selectedFarmIndex].status ?? loc("FT2: gespeicherte Referenz; Prüfung läuft", "FT2: saved reference; checking")
+    var visibleFarms: [FarmData] { catalog.visibleFarms }
+    var selectedFarm: FarmData? {
+        visibleFarms.first(where: { $0.identity == catalog.selectedFarmIdentity }) ?? visibleFarms.first
     }
-    func state(at date: Date) -> SeasonState {
-        guard farms.indices.contains(selectedFarmIndex) else { return SeasonState(seasonIndex: 0, remaining: 1020) }
-        let farm = farms[selectedFarmIndex]
-        if farm.automaticEnabled != false, let reference = farm.automaticReference {
-            return reference.state(at: date.addingTimeInterval(-(farm.manualCorrection ?? 0)))
+    var selectedFarmIdentity: FarmIdentity? {
+        get { selectedFarm?.identity }
+        set {
+            guard let newValue,
+                  visibleFarms.contains(where: { $0.identity == newValue }),
+                  newValue != selectedFarmIdentity else { return }
+            catalog.selectedFarmIdentity = newValue
         }
-        let index = Season.allCases.firstIndex(of: farm.startSeason) ?? 0
-        return SeasonCalculator.state(seasonIndex: index,
-                                      seasonStart: Date(timeIntervalSince1970: farm.absoluteStartTimeInterval), at: date)
+    }
+    var viewMode: FarmViewMode {
+        get { catalog.preferredViewMode }
+        set {
+            guard newValue != catalog.preferredViewMode else { return }
+            catalog.preferredViewMode = newValue
+        }
+    }
+    var settingsStatus: String {
+        if !sourceStatus.isEmpty { return sourceStatus }
+        return hasSaveFolder ? loc("Der Speicherort wird automatisch geprüft.", "The storage folder is checked automatically.")
+            : loc("Kein Speicherort verbunden. Vorhandene Referenzen bleiben erhalten.", "No storage folder connected. Existing references are retained.")
+    }
+    var sourcePath: String? { catalog.sources.first(where: { $0.id == catalog.activeSourceID })?.path }
+    func state(for farm: FarmData, at date: Date) -> SeasonState? {
+        farm.automaticReference?.state(at: date)
     }
 
     func chooseSaveFolder() {
@@ -76,38 +82,6 @@ final class FarmManager: ObservableObject {
         catalog.activeSourceID = nil
         for i in catalog.farms.indices { catalog.farms[i].available = false }
         sourceStatus = loc("FT2 getrennt; Referenzen bleiben erhalten", "FT2 disconnected; references retained")
-    }
-
-    func startManually() {
-        guard farms.indices.contains(selectedFarmIndex) else { return }
-        var farm = farms[selectedFarmIndex]
-        farm.absoluteStartTimeInterval = Date().timeIntervalSince1970 - (1020 - farm.initialRemainingMinutes * 60)
-        farm.automaticEnabled = false
-        farm.isTimerRunning = true
-        farms[selectedFarmIndex] = farm
-        catalog.farms[selectedFarmIndex].status = loc("Manuell; neuerer FT2-Save synchronisiert erneut", "Manual; a newer FT2 save will synchronize again")
-    }
-
-    func adjustTime(by seconds: TimeInterval) {
-        guard farms.indices.contains(selectedFarmIndex) else { return }
-        var farm = farms[selectedFarmIndex]
-        if farm.automaticEnabled != false, farm.automaticReference != nil {
-            farm.manualCorrection = (farm.manualCorrection ?? 0) + seconds
-        } else { farm.absoluteStartTimeInterval += seconds }
-        farms[selectedFarmIndex] = farm
-    }
-
-    func syncToCurrentSeasonStart() {
-        guard farms.indices.contains(selectedFarmIndex) else { return }
-        let now = Date()
-        let current = state(at: now)
-        // Works at negative elapsed times too; retains the stored automatic high-water mark.
-        var farm = farms[selectedFarmIndex]
-        farm.startSeason = Season.allCases[current.seasonIndex]
-        farm.absoluteStartTimeInterval = now.timeIntervalSince1970
-        farm.automaticEnabled = false
-        farm.manualCorrection = 0
-        farms[selectedFarmIndex] = farm
     }
 
     private func saveCatalog() {
@@ -136,8 +110,9 @@ final class FarmManager: ObservableObject {
             return
         }
         sourceStatus = readings.isEmpty ? loc("FT2: keine Hauptfarm registriert", "FT2: no main farm registered") : ""
-        let selectedID = farms.indices.contains(selectedFarmIndex) ? farms[selectedFarmIndex].id : nil
         catalog.merge(readings, sourceID: sourceID)
-        selectedFarmIndex = selectedID.flatMap { id in farms.firstIndex(where: { $0.id == id }) } ?? 0
+        if !visibleFarms.contains(where: { $0.identity == catalog.selectedFarmIdentity }) {
+            catalog.selectedFarmIdentity = visibleFarms.first?.identity
+        }
     }
 }

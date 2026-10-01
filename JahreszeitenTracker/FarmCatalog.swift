@@ -11,24 +11,20 @@ nonisolated struct FarmIdentity: Codable, Hashable, Sendable {
     let creationTime: Int64
 }
 
-// Dynamic FT2 farms retain their independent reference and manual controls.
+// Farm identities and save references are independent of the presentation.
 nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
     var id: Int
     var name: String
-    var startSeason: Season = .spring
-    var initialRemainingMinutes: Double = 17
-    var absoluteStartTimeInterval: Double = 0
-    var isTimerRunning = false
     var automaticReference: SaveReference?
-    var automaticEnabled: Bool?
-    var manualCorrection: Double?
     var identity: FarmIdentity?
     var available: Bool?
+    var registered: Bool?
+    var referenceVerified: Bool?
     var status: String?
 
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "FT2-Farm \(identity?.slotIndex.description ?? id.description)" : trimmed
+        return trimmed.isEmpty ? "FT2-Farm" : trimmed
     }
 }
 
@@ -48,7 +44,41 @@ nonisolated struct FarmCatalog: Codable, Sendable {
     var farms: [FarmData] = []
     var sources: [TrackerSource] = []
     var activeSourceID: UUID?
-    var selectedFarmID: Int?
+    var selectedFarmIdentity: FarmIdentity?
+    var preferredViewMode: FarmViewMode = .single
+    var displaySourceID: UUID?
+
+    private enum CodingKeys: String, CodingKey {
+        case farms, sources, activeSourceID, selectedFarmIdentity, preferredViewMode, displaySourceID
+        case selectedFarmID // Read the existing selection once; never write this key again.
+    }
+    init() {}
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        farms = try container.decode([FarmData].self, forKey: .farms)
+        sources = try container.decode([TrackerSource].self, forKey: .sources)
+        activeSourceID = try container.decodeIfPresent(UUID.self, forKey: .activeSourceID)
+        selectedFarmIdentity = try container.decodeIfPresent(FarmIdentity.self, forKey: .selectedFarmIdentity)
+        if selectedFarmIdentity == nil, let oldID = try container.decodeIfPresent(Int.self, forKey: .selectedFarmID) {
+            selectedFarmIdentity = farms.first(where: { $0.id == oldID })?.identity
+        }
+        preferredViewMode = try container.decodeIfPresent(FarmViewMode.self, forKey: .preferredViewMode) ?? .single
+        displaySourceID = try container.decodeIfPresent(UUID.self, forKey: .displaySourceID) ?? activeSourceID ?? sources.last?.id
+    }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(farms, forKey: .farms)
+        try container.encode(sources, forKey: .sources)
+        try container.encodeIfPresent(activeSourceID, forKey: .activeSourceID)
+        try container.encodeIfPresent(selectedFarmIdentity, forKey: .selectedFarmIdentity)
+        try container.encode(preferredViewMode, forKey: .preferredViewMode)
+        try container.encodeIfPresent(displaySourceID, forKey: .displaySourceID)
+    }
+    var visibleFarms: [FarmData] {
+        let sourceID = activeSourceID ?? displaySourceID
+        return farms.filter { $0.identity?.sourceID == sourceID && $0.registered != false }
+    }
+    var effectiveViewMode: FarmViewMode { visibleFarms.count < 2 ? .single : preferredViewMode }
 
     static func restored(current: Data?, now: Date) -> FarmCatalog {
         if let current, var catalog = try? JSONDecoder().decode(FarmCatalog.self, from: current),
@@ -60,9 +90,9 @@ nonisolated struct FarmCatalog: Codable, Sendable {
             for i in catalog.farms.indices {
                 if let reference = catalog.farms[i].automaticReference, (try? reference.validated(now: now)) == nil {
                     catalog.farms[i].automaticReference = nil
-                    catalog.farms[i].isTimerRunning = false
                 }
                 catalog.farms[i].available = false
+                catalog.farms[i].referenceVerified = false
             }
             return catalog
         }
@@ -76,12 +106,15 @@ nonisolated struct FarmCatalog: Codable, Sendable {
             let source = TrackerSource(id: UUID(), path: path, bookmark: bookmark)
             sources.append(source); activeSourceID = source.id
         }
-        for i in farms.indices { farms[i].available = false }
+        displaySourceID = activeSourceID
+        for i in farms.indices { farms[i].available = false; farms[i].referenceVerified = false }
     }
 
     mutating func merge(_ readings: [FarmReading], sourceID: UUID) {
         for i in farms.indices where farms[i].identity?.sourceID == sourceID {
             farms[i].available = false
+            farms[i].registered = false
+            farms[i].referenceVerified = false
             farms[i].status = "FT2: nicht registriert; letzte Referenz bleibt erhalten"
         }
         for reading in readings {
@@ -96,6 +129,8 @@ nonisolated struct FarmCatalog: Codable, Sendable {
             }
             farms[index].name = reading.metadata.name
             farms[index].available = true
+            farms[index].registered = true
+            farms[index].referenceVerified = false
             guard let reference = reading.reference else {
                 farms[index].status = "FT2: \(reading.message); letzte Referenz bleibt erhalten"
                 continue
@@ -108,17 +143,34 @@ nonisolated struct FarmCatalog: Codable, Sendable {
             switch ReferenceUpdate.decision(candidate: reference, previous: farms[index].automaticReference) {
             case .older: farms[index].status = "FT2: älterer Save ignoriert"
             case .conflict: farms[index].status = "FT2: widersprüchlicher Save ignoriert"
-            case .unchanged: farms[index].status = "FT2: Referenz unverändert"
+            case .unchanged:
+                farms[index].referenceVerified = true
+                farms[index].status = "FT2: Referenz unverändert"
             case .accept:
                 farms[index].automaticReference = reference
-                farms[index].automaticEnabled = true
-                farms[index].manualCorrection = 0
-                farms[index].isTimerRunning = true
-                farms[index].startSeason = Season.allCases[reference.seasonIndex]
-                farms[index].absoluteStartTimeInterval = reference.savedAt.timeIntervalSince1970
-                    + Double(reference.nextBoundary - reference.gameTime) - 1020
+                farms[index].referenceVerified = true
                 farms[index].status = "FT2 synchronisiert: \(reference.sourceName)"
             }
         }
+    }
+}
+
+nonisolated enum FarmViewMode: String, Codable, CaseIterable {
+    case single, overview
+}
+
+nonisolated enum FarmSyncState {
+    case synchronized, lastStand, waiting
+    static func forFarm(_ farm: FarmData) -> FarmSyncState {
+        guard farm.automaticReference != nil else { return .waiting }
+        return farm.available == true && farm.referenceVerified == true ? .synchronized : .lastStand
+    }
+}
+
+nonisolated enum CountdownDisplay {
+    static func seconds(remaining: TimeInterval) -> Int { Int(min(remaining + 2, 1020)) }
+    static func text(remaining: TimeInterval) -> String {
+        let seconds = seconds(remaining: remaining)
+        return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 }

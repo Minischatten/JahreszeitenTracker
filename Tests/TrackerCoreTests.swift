@@ -173,11 +173,10 @@ struct TrackerCoreTests {
         catalog.merge(readings, sourceID: source)
         check(catalog.farms.count == 2 && catalog.farms[0].automaticReference?.gameTime != catalog.farms[1].automaticReference?.gameTime, "independent references")
         check(catalog.farms[0].name == originalName && catalog.farms[0].displayName == originalName.trimmingCharacters(in: .whitespacesAndNewlines), "display-only trimming")
-        catalog.farms[0].manualCorrection = 7
         let firstReference = catalog.farms[0].automaticReference
         try metadataDocument([(0, created, "Gleicher Name"), (16, created, "Gleicher Name")]).write(to: mlk)
         catalog.merge(try FT2SaveAccess.catalog(in: temp, now: Date()), sourceID: source)
-        check(catalog.farms.count == 2 && catalog.farms[0].manualCorrection == 7 && catalog.farms[0].automaticReference == firstReference, "rename preserves correction and reference")
+        check(catalog.farms.count == 2 && catalog.farms[0].automaticReference == firstReference, "rename preserves reference")
         check(catalog.farms[0].name == catalog.farms[1].name && catalog.farms[0].identity != catalog.farms[1].identity, "duplicate names")
         try Data([0]).write(to: areas.appendingPathComponent("farm_16_1.data"))
         readings = try FT2SaveAccess.catalog(in: temp, now: Date())
@@ -216,12 +215,33 @@ struct TrackerCoreTests {
               && withoutArchive.activeSourceID == restored.activeSourceID, "existing catalog ignores legacy archive without losing active data")
         let cleanedJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(withoutArchive)) as! [String: Any]
         check(cleanedJSON["legacyFarms"] == nil, "legacy archive not serialized")
+        catalog.preferredViewMode = .overview
+        check(catalog.effectiveViewMode == .single, "removed farms do not create overview controls")
         let previousIdentity = catalog.farms[0].identity
         catalog.selectSource(path: temp.path, bookmark: Data([2]))
         check(catalog.activeSourceID == source && catalog.farms[0].identity == previousIdentity, "source reselect keeps identity")
         catalog.selectSource(path: missing.path, bookmark: Data([3]))
         catalog.merge([FarmReading(metadata: metadata[0], reference: reference, message: "")], sourceID: catalog.activeSourceID!)
         check(catalog.farms.count == 4, "different source keeps same slot separate")
+        check(catalog.visibleFarms.count == 1 && catalog.effectiveViewMode == .single, "one farm forces single mode")
+        let originalID = catalog.activeSourceID!
+        catalog.merge([
+            FarmReading(metadata: metadata[0], reference: reference, message: ""),
+            FarmReading(metadata: metadata[1], reference: reference, message: "")
+        ], sourceID: originalID)
+        check(catalog.visibleFarms.count == 2 && catalog.effectiveViewMode == .overview, "multiple farms use remembered overview")
+        check(FarmSyncState.forFarm(catalog.visibleFarms[0]) == .synchronized, "verified reference synced")
+        catalog.merge([FarmReading(metadata: metadata[0], reference: nil, message: "read error")], sourceID: originalID)
+        check(catalog.visibleFarms.count == 1 && FarmSyncState.forFarm(catalog.visibleFarms[0]) == .lastStand, "failed area read keeps countdown")
+        check(catalog.farms.contains { $0.identity?.slotIndex == 16 && $0.automaticReference != nil }, "hidden unregistered farm reference retained")
+        var noReference = FarmData(id: 999, name: "Waiting")
+        noReference.available = true
+        check(FarmSyncState.forFarm(noReference) == .waiting, "registration alone not synchronization")
+        for remaining in [0.1, 1, 59.9, 1018, 1019, 1020] {
+            check(CountdownDisplay.seconds(remaining: remaining) == Int(min(remaining + 2, 1020)), "display compensation unchanged")
+        }
+        check(CountdownDisplay.text(remaining: 1020) == "17:00", "display clamp")
+        check(CountdownDisplay.text(remaining: 57.9) == "00:59", "display truncation unchanged")
     }
 }
 
