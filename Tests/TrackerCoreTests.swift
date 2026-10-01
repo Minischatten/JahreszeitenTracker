@@ -113,6 +113,118 @@ struct TrackerCoreTests {
             }
             print("Read-only measurement files checked: \(measured)")
         }
+        try catalogTests(reference: reference)
+        if CommandLine.arguments.count > 2 {
+            let root = URL(fileURLWithPath: CommandLine.arguments[2])
+            let files = [root.appendingPathComponent("farms.mlk")] + (try FileManager.default.contentsOfDirectory(
+                at: root.appendingPathComponent("farms"), includingPropertiesForKeys: nil)).filter { $0.pathExtension == "data" }
+            let hashes = try files.map { SHA256.hash(data: try FT2SaveAccess.readOnlySnapshot($0)) }
+            let readings = try FT2SaveAccess.catalog(in: root, now: Date())
+            check(Set(readings.map { $0.metadata.slotIndex }).isSuperset(of: [0, 16]), "live nonconsecutive farms")
+            check(readings.allSatisfy { $0.reference != nil }, "live farm references")
+            for (file, hash) in zip(files, hashes) {
+                check(try SHA256.hash(data: FT2SaveAccess.readOnlySnapshot(file)) == hash, "live files unchanged")
+            }
+            print("Read-only live catalog: \(readings.map { "\($0.metadata.slotIndex): \($0.metadata.name)" })")
+        }
         print("Passed \(checks) checks")
     }
+
+    static func metadataDocument(_ farms: [(Int, Int64, String)], version: Int = 347) throws -> Data {
+        let entries = try farms.map { slot, created, name in
+            let escaped = String(decoding: try JSONEncoder().encode(name), as: UTF8.self)
+            return "{slotIndex:\(slot),farm:{name:\(escaped),creation_time:\(created)}}"
+        }.joined(separator: ",")
+        return gzip(Array("{version:\(version),farms:[\(entries)]}".utf8)).mapData { ($0 &- 31) ^ 255 }
+    }
+
+    static func catalogTests(reference: SaveReference) throws {
+        let created = reference.savedTicks - 100_000_000
+        let temp = FileManager.default.temporaryDirectory.appendingPathComponent("FT2CatalogTests-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: temp.appendingPathComponent("farms"), withIntermediateDirectories: true)
+        let areas = temp.appendingPathComponent("farms")
+        let mlk = temp.appendingPathComponent("farms.mlk")
+        let originalName = "  Farm mit {name: \\\"Text\\\"} und 🌱  "
+        let fixture = try metadataDocument([(0, created, originalName), (16, created, "Testfarm")])
+        try fixture.write(to: mlk)
+        let metadata = try FT2MetadataParser.parse(fixture)
+        check(metadata.map(\.slotIndex) == [0, 16], "metadata IDs")
+        check(metadata[0].creationTime == created && metadata[0].name == originalName, "exact ticks and untouched strings")
+        rejects("metadata version") { _ = try FT2MetadataParser.parse(metadataDocument([], version: 348)) }
+        rejects("metadata duplicate slot") { _ = try FT2MetadataParser.parse(metadataDocument([(0, created, "A"), (0, created, "B")])) }
+        rejects("metadata truncation") { _ = try FT2MetadataParser.parse(fixture.dropLast()) }
+        let duplicate = gzip(Array("{version:347,farms:[],farms:[]}".utf8)).mapData { ($0 &- 31) ^ 255 }
+        rejects("metadata duplicate property") { _ = try FT2MetadataParser.parse(duplicate) }
+        let fakeNameKey = try metadataDocument([(0, created, "a,b:name \" \\ \n")])
+        check(try FT2MetadataParser.parse(fakeNameKey)[0].name == "a,b:name \" \\ \n", "quoted strings preserved")
+        for plot in 0..<6 {
+            try gzip(document(ticks: reference.savedTicks + Int64(plot) * 10_000_000)).write(to: areas.appendingPathComponent("farm_0_\(plot).data"))
+        }
+        try gzip(document(g: 260, b: 510, s: 0)).write(to: areas.appendingPathComponent("farm_16_0.data"))
+        var readings = try FT2SaveAccess.catalog(in: temp, now: Date())
+        check(readings.count == 2 && readings[0].reference?.sourceName == "farm_0_5.data", "six areas newest")
+        check(readings[1].reference?.gameTime == 260, "one area independent")
+        try gzip(document(g: 380, ticks: reference.savedTicks + 120_000_000, b: 510)).write(to: areas.appendingPathComponent("farm_16_1.data"))
+        readings = try FT2SaveAccess.catalog(in: temp, now: Date())
+        check(readings[1].reference?.sourceName == "farm_16_1.data", "new area automatically discovered")
+        var catalog = FarmCatalog()
+        catalog.selectSource(path: temp.path, bookmark: Data([1]))
+        let source = catalog.activeSourceID!
+        catalog.merge(readings, sourceID: source)
+        check(catalog.farms.count == 2 && catalog.farms[0].automaticReference?.gameTime != catalog.farms[1].automaticReference?.gameTime, "independent references")
+        check(catalog.farms[0].name == originalName && catalog.farms[0].displayName == originalName.trimmingCharacters(in: .whitespacesAndNewlines), "display-only trimming")
+        catalog.farms[0].manualCorrection = 7
+        let firstReference = catalog.farms[0].automaticReference
+        try metadataDocument([(0, created, "Gleicher Name"), (16, created, "Gleicher Name")]).write(to: mlk)
+        catalog.merge(try FT2SaveAccess.catalog(in: temp, now: Date()), sourceID: source)
+        check(catalog.farms.count == 2 && catalog.farms[0].manualCorrection == 7 && catalog.farms[0].automaticReference == firstReference, "rename preserves correction and reference")
+        check(catalog.farms[0].name == catalog.farms[1].name && catalog.farms[0].identity != catalog.farms[1].identity, "duplicate names")
+        try Data([0]).write(to: areas.appendingPathComponent("farm_16_1.data"))
+        readings = try FT2SaveAccess.catalog(in: temp, now: Date())
+        check(readings[1].reference?.sourceName == "farm_16_0.data", "damaged newest falls back")
+        catalog.merge(readings, sourceID: source)
+        check(catalog.farms[1].automaticReference?.sourceName == "farm_16_1.data", "older fallback never rolls reference back")
+        try metadataDocument([(0, created, "Gleicher Name"), (16, reference.savedTicks + 200_000_000, "Neue Farm")]).write(to: mlk)
+        catalog.merge(try FT2SaveAccess.catalog(in: temp, now: Date()), sourceID: source)
+        check(catalog.farms.count == 3 && catalog.farms[1].available == false, "reused slot creates new identity retains old")
+        check(catalog.farms[2].automaticReference == nil, "reused slot rejects leftover areas")
+        try metadataDocument([]).write(to: mlk)
+        catalog.merge(try FT2SaveAccess.catalog(in: temp, now: Date()), sourceID: source)
+        check(catalog.farms.count == 3 && catalog.farms.allSatisfy { $0.available == false }, "missing registry retains all")
+        let retained = catalog.farms[0].automaticReference
+        try Data([0]).write(to: mlk)
+        rejects("unreadable metadata") { _ = try FT2SaveAccess.catalog(in: temp, now: Date()) }
+        check(catalog.farms[0].automaticReference == retained, "metadata failure cannot destroy reference")
+        let missing = temp.appendingPathComponent("missing")
+        try FileManager.default.createDirectory(at: missing, withIntermediateDirectories: false)
+        rejects("missing metadata") { _ = try FT2SaveAccess.catalog(in: missing, now: Date()) }
+        try metadataDocument([(7, created, "Ohne Bereich")]).write(to: missing.appendingPathComponent("farms.mlk"))
+        check(try FT2SaveAccess.catalog(in: missing, now: Date())[0].reference == nil, "registered without areas")
+        try FileManager.default.createDirectory(at: missing.appendingPathComponent("farms"), withIntermediateDirectories: false)
+        try FileManager.default.createSymbolicLink(at: missing.appendingPathComponent("farms/farm_7_0.data"), withDestinationURL: areas.appendingPathComponent("farm_0_0.data"))
+        check(try FT2SaveAccess.catalog(in: missing, now: Date())[0].reference == nil, "catalog refuses symlink area")
+        check(FarmCatalog.restored(current: nil, now: Date()).farms.isEmpty, "fresh catalog has no placeholders")
+        check(FarmCatalog.restored(current: Data([0]), now: Date()).farms.isEmpty, "invalid catalog safe")
+        let encoded = try JSONEncoder().encode(catalog)
+        let restored = FarmCatalog.restored(current: encoded, now: Date())
+        check(restored.farms.count == 3 && restored.farms[0].automaticReference == retained && restored.sources == catalog.sources, "catalog persistence")
+        var archivedJSON = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        archivedJSON["legacyFarms"] = [["name": "obsolete archive"]]
+        let oldCatalog = try JSONSerialization.data(withJSONObject: archivedJSON)
+        let withoutArchive = FarmCatalog.restored(current: oldCatalog, now: Date())
+        check(withoutArchive.farms == restored.farms && withoutArchive.sources == restored.sources
+              && withoutArchive.activeSourceID == restored.activeSourceID, "existing catalog ignores legacy archive without losing active data")
+        let cleanedJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(withoutArchive)) as! [String: Any]
+        check(cleanedJSON["legacyFarms"] == nil, "legacy archive not serialized")
+        let previousIdentity = catalog.farms[0].identity
+        catalog.selectSource(path: temp.path, bookmark: Data([2]))
+        check(catalog.activeSourceID == source && catalog.farms[0].identity == previousIdentity, "source reselect keeps identity")
+        catalog.selectSource(path: missing.path, bookmark: Data([3]))
+        catalog.merge([FarmReading(metadata: metadata[0], reference: reference, message: "")], sourceID: catalog.activeSourceID!)
+        check(catalog.farms.count == 4, "different source keeps same slot separate")
+    }
+}
+
+extension Data {
+    func mapData(_ transform: (UInt8) -> UInt8) -> Data { Data(map(transform)) }
 }

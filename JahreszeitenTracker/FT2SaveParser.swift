@@ -16,7 +16,7 @@ nonisolated enum FT2SaveParser {
                                  seasonIndex: Int(s), sourceName: sourceName).validated(now: now)
     }
 
-    private static func gunzip(_ input: Data) throws -> Data {
+    static func gunzip(_ input: Data) throws -> Data {
         guard input.count >= 18, input.count <= maximumCompressedSize,
               input.starts(with: [0x1f, 0x8b, 0x08]) else { throw FT2Error.invalid("Gzip-Header oder Größe") }
         var stream = z_stream()

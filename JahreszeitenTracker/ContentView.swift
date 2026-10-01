@@ -8,21 +8,17 @@ import SwiftUI
 import Combine
 
 // MARK: - Sprach-System (DE / EN)
-var isGermanSystem: Bool {
+nonisolated var isGermanSystem: Bool {
     let lang = Locale.preferredLanguages.first ?? Locale.current.identifier
     return lang.hasPrefix("de")
 }
 
-func loc(_ de: String, _ en: String) -> String {
+nonisolated func loc(_ de: String, _ en: String) -> String {
     return isGermanSystem ? de : en
 }
 
 // MARK: - Jahreszeiten Model
-enum Season: String, CaseIterable, Identifiable, Codable {
-    case spring, summer, autumn, winter
-    
-    var id: String { self.rawValue }
-    
+extension Season {
     func name(isGerman: Bool = isGermanSystem) -> String {
         switch self {
         case .spring: return isGerman ? "Frühling" : "Spring"
@@ -62,47 +58,8 @@ struct ContentView: View {
                 .font(.title2)
                 .bold()
             
-            // TAB-LEISTE FÜR DIE 4 FARMEN
-            HStack(spacing: 6) {
-                ForEach(0..<4, id: \.self) { index in
-                    Button(action: {
-                        manager.selectedFarmIndex = index
-                        updateCurrentSeasonLogik()
-                    }) {
-                        HStack(spacing: 4) {
-                            if manager.farms[index].isTimerRunning {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 6, height: 6)
-                            }
-                            Text(manager.farms[index].name.isEmpty ? "Farm \(index + 1)" : manager.farms[index].name)
-                                .lineLimit(1)
-                        }
-                        .padding(.vertical, 4)
-                        .padding(.horizontal, 8)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(manager.selectedFarmIndex == index ? .blue : .gray)
-                }
-            }
-            
-            // FARM-NAME EDITIEREN
-            HStack {
-                Text(loc("Farm Name:", "Farm Name:"))
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                TextField(loc("Name eingeben", "Enter name"), text: $manager.farms[manager.selectedFarmIndex].name)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 200)
-            }
-            
             HStack(spacing: 6) {
                 Button(loc("FT2-Ordner…", "FT2 folder…")) { manager.chooseSaveFolder() }
-                Menu("FT2 \(loc("Spielstand", "Save")): \(manager.sourceSlot + 1)") {
-                    ForEach(0..<4, id: \.self) { slot in
-                        Button("FT2 \(loc("Spielstand", "Save")) \(slot + 1)") { manager.setSourceSlot(slot) }
-                    }
-                }
                 if manager.hasSaveFolder {
                     Button(loc("Trennen", "Disconnect")) { manager.disconnectSaveFolder() }
                 }
@@ -111,91 +68,103 @@ struct ContentView: View {
             Text(manager.syncStatus)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .lineLimit(2)
                 .help(manager.syncStatus)
 
-            Divider()
+            if !manager.farms.isEmpty {
+                Picker(loc("Hauptfarm", "Main farm"), selection: $manager.selectedFarmIndex) {
+                    ForEach(manager.farms.indices, id: \.self) { index in
+                        let farm = manager.farms[index]
+                        Text("\(farm.displayName) · ID \(farm.identity!.slotIndex)" + (farm.available == true ? "" : loc(" (nicht verfügbar)", " (unavailable)")))
+                            .tag(index)
+                    }
+                }
+                Divider()
             
-            // HAUPTANZEIGE / EINSTELLUNGEN
-            if currentFarm.isTimerRunning {
-                // RUNNING VIEW
-                VStack(spacing: 10) {
-                    Text(loc("Aktuelle Jahreszeit:", "Current Season:"))
-                        .font(.headline)
-                        .foregroundColor(.gray)
+                // HAUPTANZEIGE / EINSTELLUNGEN
+                if currentFarm.isTimerRunning {
+                    // RUNNING VIEW
+                    VStack(spacing: 10) {
+                        Text(loc("Aktuelle Jahreszeit:", "Current Season:"))
+                            .font(.headline)
+                            .foregroundColor(.gray)
                     
-                    Text(currentSeason.name())
-                        .font(.system(size: 28, weight: .heavy, design: .rounded))
-                        .foregroundColor(colorForSeason(currentSeason))
+                        Text(currentSeason.name())
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundColor(colorForSeason(currentSeason))
                     
-                    // Empirische Testkompensation ausschließlich für die Countdown-Anzeige.
-                    Text("\(loc("Nächster Wechsel in:", "Next change in:")) \(formatTime(min(timeRemainingInCurrentSeason + 2, 1020)))")
-                        .font(.title3)
-                        .monospacedDigit()
+                        // Empirische Testkompensation ausschließlich für die Countdown-Anzeige.
+                        Text("\(loc("Nächster Wechsel in:", "Next change in:")) \(formatTime(min(timeRemainingInCurrentSeason + 2, 1020)))")
+                            .font(.title3)
+                            .monospacedDigit()
                     
-                    // FEINJUSTIERUNG (SEKUNDEN-BUTTONS)
-                    VStack(spacing: 6) {
-                        Text(loc("Feinjustierung:", "Fine Tuning:"))
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
+                        // FEINJUSTIERUNG (SEKUNDEN-BUTTONS)
+                        VStack(spacing: 6) {
+                            Text(loc("Feinjustierung:", "Fine Tuning:"))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
                         
-                        HStack(spacing: 8) {
-                            Button("-5s") { adjustTime(by: -5) }
-                            Button("-1s") { adjustTime(by: -1) }
-                            Button("+1s") { adjustTime(by: 1) }
-                            Button("+5s") { adjustTime(by: 5) }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        
-                        Button(loc("Jetzt gestartet", "Started just now")) {
-                            syncToCurrentSeasonStart()
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .help(loc("Setzt die verbleibende Zeit der aktuellen Jahreszeit wieder exakt auf 17:00", "Resets remaining time of current season back to 17:00"))
-                    }
-                    .padding(.top, 2)
-                    
-                    Button(loc("Zurücksetzen / Einstellungen", "Reset / Settings")) {
-                        manager.farms[manager.selectedFarmIndex].isTimerRunning = false
-                    }
-                    .padding(.top, 4)
-                    .buttonStyle(.borderedProminent)
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity)
-                .background(Color.black.opacity(0.05))
-                .cornerRadius(12)
-                
-            } else {
-                // CONFIGURATION VIEW
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(loc("Start-Jahreszeit:", "Starting Season:"))
-                        Picker("", selection: $manager.farms[manager.selectedFarmIndex].startSeason) {
-                            ForEach(Season.allCases) { season in
-                                Text(season.name()).tag(season)
+                            HStack(spacing: 8) {
+                                Button("-5s") { adjustTime(by: -5) }
+                                Button("-1s") { adjustTime(by: -1) }
+                                Button("+1s") { adjustTime(by: 1) }
+                                Button("+5s") { adjustTime(by: 5) }
                             }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        
+                            Button(loc("Jetzt gestartet", "Started just now")) {
+                                syncToCurrentSeasonStart()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .help(loc("Setzt die verbleibende Zeit der aktuellen Jahreszeit wieder exakt auf 17:00", "Resets remaining time of current season back to 17:00"))
                         }
-                        .pickerStyle(.segmented)
-                    }
+                        .padding(.top, 2)
                     
-                    VStack(alignment: .leading) {
-                        Text("\(loc("Verbleibende Zeit für Start-Jahreszeit:", "Remaining time for starting season:")) \(Int(currentFarm.initialRemainingMinutes)) Min.")
-                            .font(.subheadline)
-                        Slider(value: $manager.farms[manager.selectedFarmIndex].initialRemainingMinutes, in: 1...17, step: 1)
+                        Button(loc("Zurücksetzen / Einstellungen", "Reset / Settings")) {
+                            manager.farms[manager.selectedFarmIndex].isTimerRunning = false
+                        }
+                        .padding(.top, 4)
+                        .buttonStyle(.borderedProminent)
                     }
+                    .padding(12)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.05))
+                    .cornerRadius(12)
+                
+                } else {
+                    // CONFIGURATION VIEW
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text(loc("Start-Jahreszeit:", "Starting Season:"))
+                            Picker("", selection: $manager.farms[manager.selectedFarmIndex].startSeason) {
+                                ForEach(Season.allCases) { season in
+                                    Text(season.name()).tag(season)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                        }
                     
-                    Button(action: startTimer) {
-                        Text(loc("Starten", "Start"))
-                            .frame(maxWidth: .infinity)
+                        VStack(alignment: .leading) {
+                            Text("\(loc("Verbleibende Zeit für Start-Jahreszeit:", "Remaining time for starting season:")) \(Int(currentFarm.initialRemainingMinutes)) Min.")
+                                .font(.subheadline)
+                            Slider(value: $manager.farms[manager.selectedFarmIndex].initialRemainingMinutes, in: 1...17, step: 1)
+                        }
+                    
+                        Button(action: startTimer) {
+                            Text(loc("Starten", "Start"))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .tint(.green)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .tint(.green)
+                    .padding(12)
                 }
-                .padding(12)
+            } else {
+                Text(loc("Noch keine FT2-Hauptfarm erkannt.", "No FT2 main farm detected yet."))
+                    .foregroundStyle(.secondary)
             }
         }
         .padding()
@@ -210,6 +179,7 @@ struct ContentView: View {
     
     // MARK: - Logik & Methoden
     func updateCurrentSeasonLogik() {
+        guard manager.farms.indices.contains(manager.selectedFarmIndex) else { return }
         let farm = currentFarm
         guard farm.isTimerRunning else { return }
         

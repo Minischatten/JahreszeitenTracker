@@ -1,98 +1,148 @@
-# Phase 1: automatische FT2-Synchronisation
+# Dynamische FT2-Hauptfarmverwaltung
 
 ## Bedienung
 
-Die vier vorhandenen Trackerplätze bleiben unabhängig. Für den gewünschten Platz
-„FT2-Ordner…“ wählen und den Ordner freigeben, der die Bereichsdateien enthält.
-Das kleine Menü „FT2: 1“ bezeichnet den FT2-Spielstandslot, nicht den Farmbereich:
-FT2: 1 sucht farm_0_0.data bis farm_0_5.data; FT2: 2 entsprechend farm_1_*.data.
-Alle sechs Bereiche eines Slots werden berücksichtigt. Die App durchsucht nicht
-rekursiv übergeordnete Steam-/Backup-Verzeichnisse und wählt keine fremden Slots.
+„FT2-Ordner…“ einmal auswählen und den übergeordneten Speicherordner freigeben,
+der `farms.mlk` und den Unterordner `farms/` enthält. Der bisher ausgewählte
+Bereichsordner allein reicht für Farmnamen und Identitäten nicht aus.
 
-Nach Auswahl und anschließend ungefähr alle zehn Sekunden werden die Dateien
-im Hintergrund geprüft. Der neueste gültige eingebettete Speicherzeitpunkt gewinnt.
-Die App muss für die Prüfung laufen; nach einem Neustart wird der Ordnerzugriff
-über das gespeicherte Security-Scoped-Bookmark wieder aufgenommen.
+Die provisorische Auswahl zeigt alle erkannten Hauptfarmen mit Namen und Slot-ID.
+Nicht verfügbare Farmen bleiben mit ihrer letzten Referenz sichtbar. Keine große
+UI-Neugestaltung; keine festen vier Trackerplätze und kein manuelles Slot-Menü.
+Namen werden ausschließlich für die Anzeige getrimmt; der Originalwert bleibt
+im Tracker-Datensatz erhalten. Der Tracker schreibt Namen niemals nach FT2 zurück.
 
-„Trennen“ beendet die Ordnerprüfung und erhält die letzte Referenz. Manuelle
-Einstellungen und Sekundenkorrekturen bleiben möglich. Ein wirklich neuerer Save
-setzt diese Korrekturen zurück und synchronisiert erneut. Gleich alte Saves ändern
-auch eine zwischenzeitlich manuell korrigierte Referenz nicht.
+Alle zehn Sekunden wird die aktive Speicherquelle im Hintergrund gelesen.
+Neue Hauptfarmen und weitere Bereiche werden dabei automatisch berücksichtigt.
+„Trennen“ beendet die Prüfung und erhält alle Referenzen. Manuelle Korrekturen
+bleiben pro Hauptfarm unabhängig. Wie bisher setzt nur ein tatsächlich neuerer
+Save die Korrektur zurück; eine Umbenennung oder ein gleicher Save tut dies nicht.
 
-## Schreibschutz
+## Identität und Persistenz
 
-FT2SaveAccess ist die einzige Produktionsschnittstelle zum Save-Dateiinhalt:
-Darwin.open mit O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, fstat, read,
-close. Keine Schreib-, Rename-, Delete- oder Attributänderungsoperationen. Nur
-reguläre Dateien, keine Datei-Symlinks. Änderung von Größe, mtime oder ctime
-während des Lesens verwirft die Speicherkopie. Bei atomarem Austausch kann noch
-ein konsistenter älterer Snapshot gelesen werden; der nächste Scan holt auf.
+Die FT2-Identität ist `(sourceID, slotIndex, creation_time)`. Die Speicherquelle
+besitzt eine persistierte UUID, einen Pfad und ein ausschließlich lesendes
+Security-Scoped-Bookmark. Erneute Auswahl desselben normalisierten Pfads verwendet
+wieder dieselbe Quellen-ID. Bookmark-Auffrischung verändert keine Farmidentität.
+Eine Farmumbenennung ändert nur `name`, nicht Identität, Referenz oder Korrektur.
+Doppelte Namen sind zulässig. Eine wiederverwendete Slot-ID mit anderer
+Erstellungszeit erzeugt einen separaten Datensatz; der alte bleibt erhalten.
+Zusätzlich sind interne Tracker-IDs stabile, nicht als FT2-Slot interpretierte IDs.
 
-Der vom NSOpenPanel freigegebene Ordner erhält ein Bookmark mit
-securityScopeAllowOnlyReadAccess. Die Xcode-Konfiguration verwendet
-ENABLE_APP_SANDBOX=YES und ENABLE_USER_SELECTED_FILES=readonly. Keine
-zusätzlichen Zugriffsrechte, keine temporären Dateien im Save-Verzeichnis und
-keine Verarbeitung von .bak-Dateien. Betriebssystembedingte Zugriffserfassung
-(z.B. atime) wird von der App weder angefordert noch verändert.
+Der neue Katalog liegt in den eigenen UserDefaults unter `ft2FarmCatalog_v2`.
+Die alte Vier-Farmen-Konfiguration unter `savedFarmsData_v1` wird nicht mehr
+verwendet, gelesen oder neu geschrieben. Es gibt keine Legacy-Migration und
+keine Archivmeldung. Bereits vorhandene `legacyFarms`-Felder in einem gültigen
+v2-Katalog werden beim Dekodieren ignoriert und beim nächsten Speichern nicht
+mehr ausgegeben. Aktive Farmen, Quellen, Auswahl, Referenzen und Korrekturen
+bleiben erhalten. Ein noch vorhandener alter v1-UserDefaults-Schlüssel ist
+wirkungslos; die App löscht ihn nicht eigenständig.
 
-App-Zustand und Bookmark werden ausschließlich in den eigenen UserDefaults
-unter savedFarmsData_v1 gespeichert. Vorhandene manuelle Datensätze bleiben
-wegen optionaler neuer Felder lesbar. Der Manager wird zwischen Fenstern geteilt.
+Ein erneuter erfolgreicher Scan aktualisiert den Namen auch ohne neuen Bereichs-
+Save. Farmen, die in einem vollständigen gültigen Metadaten-Snapshot fehlen,
+werden als nicht verfügbar markiert, aber nicht gelöscht. Fehlende oder defekte
+Metadaten verändern keine Referenzen. Ein anderer ausgewählter Quellordner erhält
+eine eigene Identität; alte Datensätze bleiben erhalten. Ein umbenannter Ordner
+funktioniert über sein Bookmark weiter; eine manuelle Auswahl unter einem neuen
+Pfad kann eine neue Quellen-ID erzeugen. Diese Quellenzusammenführung ist offen.
 
-## Parser und Validierung
+## Lesen von farms.mlk
 
-Gzip mit zlib (inklusive CRC und ISIZE), genau ein Stream, keine Restdaten.
-Maximal 16 MiB komprimiert, 64 MiB entpackt, 64 Verschachtelungen und vier
-Millionen Werte. Diese Grenzen können große zukünftige Saves kontrolliert
-ablehnen; sie sind keine Größenbehauptung über sämtliche FT2-Farmen.
+Aktueller FT2-Build, Version 347:
 
-Strukturelles vollständiges Durchlaufen des beobachteten Formats: C1 Objekt,
-C7 Liste, C8 Ende, numerische Feldkennungen; primitive MessagePack-artige Werte.
-Nur Root-Felder 0, 15, 16, 18, 21 werden gespeichert. Unbekannte Typbytes,
-doppelte Objektfelder, fehlende Abschlüsse, falsche Feldtypen und unbekannte
-Versionen werden abgelehnt. Phase 1 akzeptiert ausschließlich die beobachtete
-Version 347. Keine heuristische Bytefolgensuche.
+1. SaveStream.ConvertFromByte: `((byte XOR 255) + 31) modulo 256`.
+2. Gzip entpacken mit CRC-/ISIZE-Prüfung, genau ein Stream, keine Restdaten.
+3. UTF-8-JSON mit unquoted Eigenschaftsnamen normalisieren.
+4. Typisiert `farms[].slotIndex`, `farms[].farm.creation_time` und
+   `farms[].farm.name` lesen. Int64-Zeiten werden nicht über Double umgewandelt.
 
-Erforderlich: nichtnegative interne Zeit, Saisonindex 0...3, Restzeit >0 und
-<=1020, gültiger DateTime-Ticks-Bereich und höchstens fünf Minuten zukünftiger
-Speicherzeitpunkt. Eine Saisonphase am exakten Wechsel mit Restzeit 0 wird
-vorsichtshalber nicht importiert; der nächste konsistente Save kann folgen.
+Die Normalisierung ist ein begrenzter struktureller Parser, keine Regex-Ersetzung
+und keine Auswertung von Text. Er erhält escaped Strings, prüft doppelte Schlüssel,
+Verschachtelung und Restdaten. JSONDecoder prüft anschließend die JSON-Syntax.
+Doppelte Slot-IDs, ungültige Identitäten oder unbekannte Metadatenversionen führen
+zur Ablehnung des gesamten Snapshots. Bei einem Fehler wird keine Farm als gelöscht
+interpretiert. Maximal 10.000 registrierte Farmen pro Metadatendokument.
 
-Neuere Saves ersetzen die Referenz; ältere werden abgelehnt. Gleiche Zeitstempel
-mit widersprüchlichen Zeit-/Saisonwerten werden ebenfalls abgelehnt, auch zwischen
-Bereichsdateien. Nicht lesbare oder ungültige Kandidaten werden übersprungen.
-Kein gültiger Kandidat: bisheriger Zustand bleibt erhalten. Der Parser wird erst
-vollständig abgeschlossen und validiert, bevor der Manager überhaupt mutiert.
+## Bereichsauswahl und Zeitsemantik
 
-## Zeitsemantik
+Pro registrierter Hauptfarm werden nur exakt `farm_<ID>_0.data` bis
+`farm_<ID>_5.data` berücksichtigt, ohne Rekursion, Common-Dateien oder `.bak`.
+Ein Bereich muss nicht bereits existieren. Der höchste gültige eingebettete
+Zeitpunkt aus Feld 16 gewinnt. Alle vier Referenzwerte stammen gemeinsam aus
+einer Bereichsdatei. Ein Save vor der Erstellungszeit der Farm wird ausgeschlossen,
+damit bei Slot-Wiederverwendung keine alten Bereichsdateien übernommen werden.
+Widersprüchliche neueste Saves mit gleichem Zeitpunkt werden abgelehnt.
 
-Feld 16 wird zentral in TrackerClock als UTC-.NET-DateTime-Ticks seit 0001-01-01
-interpretiert und in Date umgerechnet. Alle Messdaten passen dazu; ein DateTime.Kind
-ist im beobachteten Integer nicht enthalten. Winterzeit und Verhalten bei lokalen
-Uhrumstellungen wurden noch nicht kontrolliert gemessen. Keine eigene DST-Korrektur.
-Die Umrechnung ist bewusst zentral anpassbar.
+Vor und nach dem Bereichsscan werden die Metadaten als stabile Snapshot-Datei
+gelesen und verglichen. Eine Änderung verwirft das Gesamtergebnis. Dateien können
+weiterhin zwischen den Scans entstehen oder verschwinden; der nächste Scan holt
+auf. Das Verfahren stellt keine transaktionale FT2-Speicherung her.
 
-Aus Feld 15, Feld 18, Feld 21 und Speicherzeit wird der absolute Beginn der
-Referenzsaison abgeleitet. SeasonCalculator berechnet den Zustand direkt aus dem
-übergebenen Date, Dauer 1020 und positivem Modulo 4080. Beliebig viele verpasste
-Zyklen benötigen keine Timeraufrufe. Rückwärts gehende Systemzeit wird ebenfalls
-mathematisch konsistent behandelt, garantiert aber nicht dasselbe FT2-Verhalten.
+Die bestehende Referenzarithmetik bleibt unverändert: UTC-.NET-DateTime-Ticks,
+1020 Sekunden pro Saison, positiver Modulo 4080, absolute Systemzeit. Feld 15 ist
+worldTicks, 18 nextSeasonChange, 21 currentSeason. Nur die sichtbare Restzeit nutzt
+`min(remaining + 2, 1020)`. Die +2 Sekunden verändern weder Saison noch Wechsel.
 
-Die bekannte Sekundenabweichung zwischen interner Zeit und Echtzeit kann bis
-zum nächsten neueren Save bleiben, auch nahe einer Saisongrenze. Das ist eine
-Vorhersage, keine dauerhaft sekundengenaue Spielanbindung.
+## Schreibschutz und Grenzen
+
+FT2SaveAccess ist die Produktionsschnittstelle zu FT2-Dateien: Darwin.open mit
+O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK, fstat, read, close. Keine Schreib-,
+Rename-, Delete-, Reparatur- oder Attributoperationen. Reguläre Dateien, keine
+Datei-Symlinks; auch ein verknüpfter Bereichsordner wird abgelehnt. Änderungen von
+Größe, mtime oder ctime während des Lesens verwerfen den Snapshot. Keine temporären
+Dateien in FT2-Verzeichnissen. Verarbeitung ausschließlich im Arbeitsspeicher.
+
+Bookmark: securityScopeAllowOnlyReadAccess. Xcode: App-Sandbox aktiviert und
+ENABLE_USER_SELECTED_FILES=readonly. Betriebssystembedingte Zugriffserfassung
+wird von der App weder angefordert noch verändert.
+
+Maximal 16 MiB komprimiert, 64 MiB entpackt, 64 Verschachtelungen und vier Millionen
+Werte. Die Bereichsparsing-Regeln bleiben bestehen: Version 347, keine doppelten
+Objektfelder, gültige Zeiten, Saison 0...3, Restzeit >0 und <=1020, höchstens fünf
+Minuten zukünftiger Speicherzeitpunkt. Neuere Saves ersetzen die Referenz; ältere,
+gleichzeitige widersprüchliche oder kaputte Kandidaten nicht.
+
+## Analyse: Löschen im aktuellen FT2-Code
+
+Untersucht: Assembly-CSharp.dll, SHA256
+`d7a7613849acb748d1d78801e5274f4993ff4670237e176f32bd9de4ade6a78e`.
+
+- Core.SaveManager.DeleteSlot() ruft LocalFarmHeader.Delete() auf, entfernt den
+  Slot aus `slots`, bereinigt gegebenenfalls currentFarm/selectedFarmIndex,
+  sortiert die Liste, wählt eine Farm und ruft Save() auf.
+- SaveManager.ToJson() serialisiert nur die aktuelle `slots`-Liste nach `farms`;
+  SaveManager.Save() schreibt `farms.mlk`. Damit verschwindet der registrierte
+  Eintrag beim erfolgreichen Speichern.
+- LocalFarmHeader.Delete() ruft FarmData.DeleteFarm(header) auf. Diese Methode
+  stellt über StorageManager.Post einen asynchronen PlayerIOOperation ein.
+- Die IO-Überladung FarmData.DeleteFarm(storage, object) erzeugt ausschließlich
+  GetFarmPath(false), prüft FileExists und ruft DeleteFile für die Common-Datei
+  `farms/farm_<ID>.data` auf. Sie enthält keine Bereichsschleife und keine
+  Löschaufrufe für Bereichsdateien oder `.bak`.
+
+Registrierung und Dateilöschung sind daher keine atomare Operation. Aus dem
+untersuchten Ablauf folgt insbesondere keine Garantie, dass alle Bereichsdateien
+verschwinden. Der Tracker verwendet die Registrierung aus farms.mlk und bewahrt
+verschwundene Identitäten auf; zurückgebliebene Dateinamen registrieren keine Farm.
+Keine Löschfunktion des Spiels wurde ausgeführt.
+
+ID-Vergabe: CreateSlot() ruft GetFreeSlot() auf; zufälliger Start 0...49, danach
+inkrementieren, solange GetFarm(ID) einen registrierten Slot liefert. Keine
+fortlaufenden IDs und keine feste Beschränkung auf vier Hauptfarmen.
 
 ## Prüfung
 
+```sh
 sh Tests/run-tests.sh
-sh Tests/run-tests.sh /pfad/zu/ft2-testspielstaenden
+sh Tests/run-tests.sh '/pfad/zu/ft2-testspielstaenden' '<Benutzerordner>/Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage/<Steam-ID>'
+```
 
-Die zweite Variante liest vorhandene Bereichsdateien, verifiziert Referenzwerte
-und Saisonraster und prüft ihre Hashes davor/danach. Sie schreibt nicht in diese
-Dateien. Synthetische beschädigte Gzip-/Strukturfixtures und Verzeichnistests
-werden ausschließlich unter einem neuen temporären Ordner erzeugt. Compiler-
-und Testartefakte liegen ebenfalls außerhalb der FT2-Verzeichnisse.
+Synthetische Testdateien werden nur in frischen temporären Testordnern erzeugt.
+Die optionale Variante liest historische Bereichssaves und den echten Katalog,
+prüft die Identitäten 0 und 16 sowie die Hashes aller gelesenen Dateien vorher und
+nachher. Der zweite Testsatz prüft den Manager mit einer isolierten UserDefaults-
+Suite, einschließlich Persistenz, Entfernung alter Archivfelder und unabhängiger Korrekturen.
 
-Der Xcode-Build prüft zusätzlich die App-Integration. NSOpenPanel, Bookmark-
-Wiederaufnahme und die signierte App-Sandbox müssen im normalen App-Betrieb
-auf dem Benutzer-Mac verifiziert werden; der unsigned Build bestätigt sie nicht.
+Der macOS-Build prüft die App-Integration. Auswahl, Wiederaufnahme des Bookmarks
+und Sandbox-Zugriff müssen zusätzlich im normalen signierten Xcode-App-Lauf auf
+dem Mac geprüft werden. Ein unsigned Build bestätigt diese Zugriffswege nicht.
