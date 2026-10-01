@@ -61,7 +61,7 @@ struct ContentView: View {
                     let now = Date()
                     ScrollView {
                         if let farm = navigation.detail(in: manager.visibleFarms) {
-                            FarmCardView(farm: farm, state: manager.state(for: farm, at: now), compact: false)
+                            FarmDetailView(farm: farm, state: manager.state(for: farm, at: now)) { navigation.back() }
                                 .frame(maxWidth: 640)
                                 .frame(maxWidth: .infinity)
                                 .padding(20)
@@ -98,6 +98,55 @@ struct ContentView: View {
                     .help(loc("Einstellungen", "Settings"))
                     .accessibilityLabel(loc("Einstellungen", "Settings"))
             }
+        }
+    }
+}
+
+private struct FarmDetailView: View {
+    @EnvironmentObject private var manager: FarmManager
+    let farm: FarmData
+    let state: SeasonState?
+    let onDeleted: () -> Void
+    @State private var deletionCandidate: FarmData?
+    @State private var confirmsDeletion = false
+
+    var body: some View {
+        VStack(spacing: 20) {
+            FarmCardView(farm: farm, state: state, compact: false)
+            if farm.isInactive {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(loc("Farm nicht mehr gefunden", "Farm no longer found"))
+                        .font(.headline)
+                    Text(farm.automaticReference == nil
+                         ? loc("Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Es liegt kein gültiger Spielstand für einen Countdown vor.",
+                               "This farm is no longer registered in the Farm Together 2 saves. No valid save is available for a countdown.")
+                         : loc("Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Der JahreszeitenTracker verwendet deshalb den zuletzt bekannten Spielstand. Der Countdown läuft auf dieser Grundlage weiter.",
+                               "This farm is no longer registered in the Farm Together 2 saves. JahreszeitenTracker uses the last known save and continues the countdown on that basis."))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button(role: .destructive) {
+                    deletionCandidate = farm
+                    confirmsDeletion = true
+                } label: {
+                    Text(loc("Farm endgültig löschen", "Permanently delete farm"))
+                }
+            }
+        }
+        .alert(loc("„\(deletionCandidate?.displayName ?? farm.displayName)“ endgültig löschen?",
+                   "Permanently delete ‘\(deletionCandidate?.displayName ?? farm.displayName)’?"),
+               isPresented: $confirmsDeletion, presenting: deletionCandidate) { candidate in
+            Button(loc("Abbrechen", "Cancel"), role: .cancel) { deletionCandidate = nil }
+            Button(loc("Endgültig löschen", "Permanently delete"), role: .destructive) {
+                if let identity = candidate.identity, manager.removeInactiveFarm(identity: identity) {
+                    onDeleted()
+                }
+                deletionCandidate = nil
+            }
+        } message: { _ in
+            Text(loc("Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert.",
+                     "All tracker data for this farm will be permanently removed from JahreszeitenTracker. This cannot be undone.\n\nFarm Together 2 saves will not be modified."))
         }
     }
 }

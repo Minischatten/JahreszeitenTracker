@@ -22,6 +22,8 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
     var referenceVerified: Bool?
     var status: String?
 
+    var isInactive: Bool { registered == false }
+
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? "FT2-Farm" : trimmed
@@ -73,7 +75,18 @@ nonisolated struct FarmCatalog: Codable, Sendable {
     }
     var visibleFarms: [FarmData] {
         let sourceID = activeSourceID ?? displaySourceID
-        return farms.filter { $0.identity?.sourceID == sourceID && $0.registered != false }
+        return farms.filter { $0.identity?.sourceID == sourceID }
+    }
+
+    /// Removes only a confirmed, no-longer-registered tracker record.
+    /// Full identity prevents removal of a new farm reusing the same slot.
+    @discardableResult
+    mutating func removeInactiveFarm(identity: FarmIdentity) -> Bool {
+        guard let index = farms.firstIndex(where: { $0.identity == identity }),
+              farms[index].isInactive else { return false }
+        farms.remove(at: index)
+        if selectedFarmIdentity == identity { selectedFarmIdentity = nil }
+        return true
     }
 
     static func restored(current: Data?, now: Date) -> FarmCatalog {
@@ -163,8 +176,9 @@ nonisolated struct FarmNavigation {
 }
 
 nonisolated enum FarmSyncState {
-    case synchronized, lastStand, waiting
+    case synchronized, lastStand, waiting, notFound
     static func forFarm(_ farm: FarmData) -> FarmSyncState {
+        if farm.isInactive { return .notFound }
         guard farm.automaticReference != nil else { return .waiting }
         return farm.available == true && farm.referenceVerified == true ? .synchronized : .lastStand
     }

@@ -59,14 +59,19 @@ beim Laden anhand des bestehenden Datensatzes in die FarmIdentity überführt.
 Registrierung, momentane Verfügbarkeit und erfolgreich geprüfte Referenz werden
 getrennt behandelt. Ein kompletter erfolgreicher Metadatenscan bestimmt die
 Registrierung. Temporäre Lesefehler ändern sie nicht und blenden deshalb keine
-zuletzt registrierte Farm aus. Erst ein erfolgreicher Scan ohne diese Identität
-blendet sie aus. Auf Karten: „Synchronisiert“ für eine erfolgreich geprüfte
+zuletzt registrierte Farm als entfernt dar. Erst ein erfolgreicher Scan ohne diese
+Identität markiert sie als inaktiv. Auf Karten: „Synchronisiert“ für eine erfolgreich geprüfte
 Referenz, „Letzter Stand“ bei fortgerechneter Referenz ohne aktuelle Bestätigung,
-„Warte auf Spielstand“ ohne Referenz. Diese Flags beeinflussen keine Zeitrechnung.
+„Warte auf Spielstand“ ohne Referenz. Inaktive Farmen zeigen immer
+„Farm nicht mehr gefunden“, unabhängig von der erhaltenen Referenz. Diese Flags beeinflussen keine Zeitrechnung.
 
 Ein erneuter erfolgreicher Scan aktualisiert den Namen auch ohne neuen Bereichs-
 Save. Farmen, die in einem vollständigen gültigen Metadaten-Snapshot fehlen,
-werden als nicht registriert markiert, aus der normalen Übersicht ausgeblendet, aber nicht gelöscht. Fehlende oder defekte
+werden als nicht registriert markiert und bleiben gedimmt an ihrer bisherigen
+Position sichtbar. Ihre letzte Referenz wird weitergerechnet. Nur die Aktion
+„Farm endgültig löschen“ in der Detailansicht entfernt nach Bestätigung den
+vollständigen Tracker-Datensatz. Sie löscht keine FT2-Dateien und prüft die volle
+Identität und den inaktiven Zustand erneut vor dem Entfernen. Fehlende oder defekte
 Metadaten verändern keine Referenzen. Ein anderer ausgewählter Quellordner erhält
 eine eigene Identität; alte Datensätze bleiben erhalten. Ein umbenannter Ordner
 funktioniert über sein Bookmark weiter; eine manuelle Auswahl unter einem neuen
@@ -165,8 +170,8 @@ sh Tests/run-tests.sh '/pfad/zu/ft2-testspielstaenden' '<Benutzerordner>/Library
 
 Synthetische Testdateien werden nur in frischen temporären Testordnern erzeugt.
 Die optionale Variante liest historische Bereichssaves und den echten Katalog,
-prüft die Identitäten 0 und 16 sowie die Hashes aller gelesenen Dateien vorher und
-nachher. Der zweite Testsatz prüft den Manager mit einer isolierten UserDefaults-
+vergleicht den Katalog mit der aktuellen Registrierung und prüft die Hashes
+aller gelesenen Dateien vorher und nachher. Der zweite Testsatz prüft den Manager mit einer isolierten UserDefaults-
 Suite, einschließlich Persistenz, Entfernung manueller Altzustände und unabhängiger Saisonreferenzen.
 
 Der macOS-Build prüft die App-Integration. Auswahl, Wiederaufnahme des Bookmarks

@@ -66,6 +66,8 @@ struct FarmCardView: View {
                 syncLabel
             }
         }
+        .grayscale(farm.isInactive ? 1 : 0)
+        .opacity(compact && farm.isInactive ? 0.78 : 1)
         .padding(compact ? 20 : 28)
         .frame(maxWidth: .infinity)
         .background(.background, in: RoundedRectangle(cornerRadius: 20))
@@ -90,6 +92,7 @@ struct FarmCardView: View {
         switch status {
         case .synchronized: return loc("Synchronisiert", "Synced")
         case .lastStand: return loc("Letzter Stand", "Last saved state")
+        case .notFound: return loc("Farm nicht mehr gefunden", "Farm no longer found")
         case .waiting: return loc("Warte auf Spielstand", "Waiting for save")
         }
     }
@@ -98,6 +101,7 @@ struct FarmCardView: View {
         case .synchronized: return "checkmark.circle.fill"
         case .lastStand: return "clock"
         case .waiting: return "hourglass"
+        case .notFound: return "archivebox"
         }
     }
 }

@@ -80,6 +80,14 @@ final class FarmManager: ObservableObject {
         sourceStatus = loc("FT2 getrennt; Referenzen bleiben erhalten", "FT2 disconnected; references retained")
     }
 
+    @discardableResult
+    func removeInactiveFarm(identity: FarmIdentity) -> Bool {
+        var updated = catalog
+        guard updated.removeInactiveFarm(identity: identity) else { return false }
+        catalog = updated
+        return true
+    }
+
     private func saveCatalog() {
         if let data = try? JSONEncoder().encode(catalog) { defaults.set(data, forKey: key) }
     }

@@ -120,8 +120,12 @@ struct TrackerCoreTests {
                 at: root.appendingPathComponent("farms"), includingPropertiesForKeys: nil)).filter { $0.pathExtension == "data" }
             let hashes = try files.map { SHA256.hash(data: try FT2SaveAccess.readOnlySnapshot($0)) }
             let readings = try FT2SaveAccess.catalog(in: root, now: Date())
-            check(Set(readings.map { $0.metadata.slotIndex }).isSuperset(of: [0, 16]), "live nonconsecutive farms")
-            check(readings.allSatisfy { $0.reference != nil }, "live farm references")
+            let liveMetadata = try FT2MetadataParser.parse(FT2SaveAccess.readOnlySnapshot(root.appendingPathComponent("farms.mlk")))
+            check(readings.map(\.metadata) == liveMetadata, "live catalog matches current registry rather than historical slot assumptions")
+            check(readings.allSatisfy { reading in
+                guard let reference = reading.reference else { return true }
+                return reference.savedTicks >= reading.metadata.creationTime
+            }, "live references do not predate farm creation")
             for (file, hash) in zip(files, hashes) {
                 check(try SHA256.hash(data: FT2SaveAccess.readOnlySnapshot(file)) == hash, "live files unchanged")
             }
@@ -215,7 +219,7 @@ struct TrackerCoreTests {
               && withoutArchive.activeSourceID == restored.activeSourceID, "existing catalog ignores legacy archive without losing active data")
         let cleanedJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(withoutArchive)) as! [String: Any]
         check(cleanedJSON["legacyFarms"] == nil, "legacy archive not serialized")
-        check(catalog.visibleFarms.isEmpty && FarmNavigation().detail(in: catalog.visibleFarms) == nil, "removed farms do not create overview controls")
+        check(catalog.visibleFarms.count == 3 && catalog.visibleFarms.allSatisfy(\.isInactive), "removed farms stay visible in catalog order")
         let previousIdentity = catalog.farms[0].identity
         catalog.selectSource(path: temp.path, bookmark: Data([2]))
         check(catalog.activeSourceID == source && catalog.farms[0].identity == previousIdentity, "source reselect keeps identity")
@@ -238,8 +242,27 @@ struct TrackerCoreTests {
         check(navigation.detail(in: catalog.visibleFarms) == nil, "missing identity safely shows overview")
         check(FarmSyncState.forFarm(catalog.visibleFarms[0]) == .synchronized, "verified reference synced")
         catalog.merge([FarmReading(metadata: metadata[0], reference: nil, message: "read error")], sourceID: originalID)
-        check(catalog.visibleFarms.count == 1 && FarmSyncState.forFarm(catalog.visibleFarms[0]) == .lastStand, "failed area read keeps countdown")
-        check(catalog.farms.contains { $0.identity?.slotIndex == 16 && $0.automaticReference != nil }, "hidden unregistered farm reference retained")
+        check(catalog.visibleFarms.count == 2 && FarmSyncState.forFarm(catalog.visibleFarms[0]) == .lastStand
+              && FarmSyncState.forFarm(catalog.visibleFarms[1]) == .notFound, "plot failure remains registered while missing farm stays visible")
+        check(catalog.farms.contains { $0.identity?.slotIndex == 16 && $0.automaticReference != nil }, "inactive farm reference retained")
+        let inactiveIdentity = catalog.visibleFarms[1].identity!
+        let inactiveRecord = catalog.visibleFarms[1]
+        check(FarmNavigation(openedIdentity: inactiveIdentity).detail(in: catalog.visibleFarms) == inactiveRecord,
+              "inactive card opens normal detail by identity")
+        check(inactiveRecord.automaticReference?.state(at: reference.savedAt.addingTimeInterval(2040)) != nil,
+              "inactive countdown continues across seasons")
+        let orderBeforeReturn = catalog.visibleFarms.map(\.identity)
+        catalog.merge([
+            FarmReading(metadata: metadata[0], reference: reference, message: ""),
+            FarmReading(metadata: metadata[1], reference: reference, message: "")
+        ], sourceID: originalID)
+        check(catalog.visibleFarms.map(\.identity) == orderBeforeReturn
+              && !catalog.visibleFarms[1].isInactive, "returning exact identity reactivates in original position")
+        check(!catalog.removeInactiveFarm(identity: inactiveIdentity), "reactivated farm protected from stale delete confirmation")
+        var inactiveWithoutReference = FarmData(id: 998, name: "Removed", registered: false)
+        check(FarmSyncState.forFarm(inactiveWithoutReference) == .notFound, "inactive status takes priority over missing reference")
+        inactiveWithoutReference.registered = nil
+        check(!inactiveWithoutReference.isInactive, "unknown registration is not removal")
         var noReference = FarmData(id: 999, name: "Waiting")
         noReference.available = true
         check(FarmSyncState.forFarm(noReference) == .waiting, "registration alone not synchronization")

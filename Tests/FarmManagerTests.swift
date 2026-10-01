@@ -83,6 +83,39 @@ struct FarmManagerTests {
         check(!reloaded.hasSaveFolder && reloaded.farms[1].automaticReference == b, "disconnect retains reference")
         check(reloaded.visibleFarms.count == 2 && reloaded.state(for: reloaded.farms[1], at: b.savedAt) == b.state(at: b.savedAt), "disconnect still presents last references")
         check(FarmSyncState.forFarm(reloaded.farms[1]) == .lastStand, "disconnected reference status")
+        let firstIdentity = manager.farms[0].identity!
+        let oldIdentity = manager.farms[1].identity!
+        let oldID = manager.farms[1].id
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "A"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: ticks + 10_000_000, name: "New B"), reference: nil, message: "No save")
+        ], sourceID: source)
+        let newIdentity = manager.farms[2].identity!
+        check(manager.visibleFarms.map(\.identity) == [firstIdentity, oldIdentity, newIdentity], "reused slot keeps inactive farm in place and appends new identity")
+        check(manager.farms[1].automaticReference == b && FarmSyncState.forFarm(manager.farms[1]) == .notFound,
+              "old reused-slot record retains countdown and neutral status")
+        check(!manager.farms[2].isInactive && manager.farms[2].automaticReference == nil,
+              "new reused-slot farm does not inherit old reference")
+        manager.selectedFarmIdentity = oldIdentity
+        let sourcesBeforeDelete = manager.catalog.sources
+        let beforeDelete = defaults.data(forKey: "ft2FarmCatalog_v2")
+        check(!manager.removeInactiveFarm(identity: newIdentity), "active farm cannot be removed")
+        check(defaults.data(forKey: "ft2FarmCatalog_v2") == beforeDelete, "refused delete leaves persistence unchanged")
+        check(manager.removeInactiveFarm(identity: oldIdentity), "confirmed inactive tracker deletion succeeds")
+        check(!manager.farms.contains { $0.identity == oldIdentity || $0.id == oldID }
+              && manager.catalog.selectedFarmIdentity == nil, "all farm data and selected identity removed")
+        check(manager.catalog.sources == sourcesBeforeDelete && manager.farms[0].automaticReference == a
+              && manager.farms[1].identity == newIdentity, "other farms sources bookmarks and reused slot preserved")
+        let afterDelete = FarmManager(defaults: defaults)
+        check(afterDelete.farms.count == 2 && !afterDelete.farms.contains { $0.identity == oldIdentity },
+              "deleted farm does not return after reload")
+        check(!manager.removeInactiveFarm(identity: oldIdentity), "repeated deletion is a no-op")
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "A"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "New B"), reference: nil, message: "No save")
+        ], sourceID: source)
+        check(manager.farms.count == 2 && !manager.farms.contains { $0.identity == oldIdentity },
+              "later scans do not resurrect removed unregistered identity")
         print("Passed \(checks) manager checks")
     }
 }
