@@ -81,6 +81,17 @@ final class FarmManager: ObservableObject {
     }
 
     @discardableResult
+    func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity) -> Bool {
+        guard visibleFarms.count > 1,
+              visibleFarms.contains(where: { $0.identity == identity }),
+              visibleFarms.contains(where: { $0.identity == target }) else { return false }
+        var updated = catalog
+        guard updated.moveFarm(identity, to: target) else { return false }
+        catalog = updated
+        return true
+    }
+
+    @discardableResult
     func removeInactiveFarm(identity: FarmIdentity) -> Bool {
         var updated = catalog
         guard updated.removeInactiveFarm(identity: identity) else { return false }

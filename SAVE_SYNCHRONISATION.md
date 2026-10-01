@@ -10,6 +10,12 @@ Die Hauptansicht zeigt bei einer registrierten Hauptfarm direkt deren Karte.
 Ab zwei Farmen startet die Ansicht in der Übersicht mit vollständig anklickbaren
 Karten. „Alle Farmen“ führt aus einer geöffneten Farm zurück. Die Übersicht
 verwendet ein adaptives scrollbares LazyVGrid. Es gibt keine feste Kartenanzahl.
+Karten können per Drag & Drop auf eine andere Karte gezogen werden. Die Zielkarte
+wird umrandet; erst beim Ablegen wandert die gezogene Karte an deren Position.
+Gespeichert wird die vorhandene Katalogreihenfolge, ohne zusätzlichen Sortierschlüssel.
+Auch inaktive Karten können verschoben werden. Die volle FarmIdentity bestimmt
+den Datensatz; neue Identitäten werden weiterhin angehängt. Andere Quellen
+behalten ihre Arraypositionen, FT2-Dateien werden nicht verändert.
 Die Einzelfarmkarte enthält Saisonbild, Saisonname, Countdown, kurzen Status und
 die nächste Saison. Alle vier Saisonbilder stammen aus den vorhandenen Assets.
 

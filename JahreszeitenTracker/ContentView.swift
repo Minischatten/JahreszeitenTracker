@@ -1,4 +1,6 @@
 import SwiftUI
+import CoreTransferable
+import UniformTypeIdentifiers
 
 nonisolated var isGermanSystem: Bool {
     let lang = Locale.preferredLanguages.first ?? Locale.current.identifier
@@ -151,11 +153,21 @@ private struct FarmDetailView: View {
     }
 }
 
+// Only our identity payload is accepted; filenames and external text are not drops.
+private nonisolated struct FarmCardDrag: Codable, Transferable {
+    let identity: FarmIdentity?
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: UTType(exportedAs: "yasha.jahreszeitentracker.farm-card"))
+    }
+}
+
 private struct OverviewFarmButton: View {
+    @EnvironmentObject private var manager: FarmManager
     let farm: FarmData
     let state: SeasonState?
     let action: () -> Void
     @State private var isHovered = false
+    @State private var isDropTarget = false
 
     var body: some View {
         Button(action: action) {
@@ -163,11 +175,17 @@ private struct OverviewFarmButton: View {
                 .contentShape(RoundedRectangle(cornerRadius: 20))
                 .overlay {
                     RoundedRectangle(cornerRadius: 20)
-                        .strokeBorder(.primary.opacity(isHovered ? 0.2 : 0), lineWidth: 1)
+                        .strokeBorder(isDropTarget ? Color.accentColor : Color.primary.opacity(isHovered ? 0.2 : 0),
+                                      lineWidth: isDropTarget ? 2 : 1)
                 }
                 .shadow(color: .black.opacity(isHovered ? 0.07 : 0), radius: 4, y: 2)
         }
         .buttonStyle(.plain)
+        .draggable(FarmCardDrag(identity: farm.identity))
+        .dropDestination(for: FarmCardDrag.self) { items, _ in
+            guard items.count == 1, let identity = items.first?.identity, let target = farm.identity else { return false }
+            return manager.moveFarm(identity, to: target)
+        } isTargeted: { isDropTarget = $0 }
         .onHover { isHovered = $0 }
         .accessibilityLabel(farm.displayName)
         .accessibilityHint(loc("Farm öffnen", "Open farm"))

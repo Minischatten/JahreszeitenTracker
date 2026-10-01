@@ -116,6 +116,62 @@ struct FarmManagerTests {
         ], sourceID: source)
         check(manager.farms.count == 2 && !manager.farms.contains { $0.identity == oldIdentity },
               "later scans do not resurrect removed unregistered identity")
+        // Reordering uses the existing array, including inactive records.
+        check(manager.moveFarm(newIdentity, to: firstIdentity), "drop moves last card to first")
+        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity], "custom order applied")
+        let reorderedReload = FarmManager(defaults: defaults)
+        check(reorderedReload.visibleFarms.map(\.identity) == [newIdentity, firstIdentity], "custom order survives restart")
+        let moveSaved = defaults.data(forKey: "ft2FarmCatalog_v2")
+        check(!manager.moveFarm(newIdentity, to: newIdentity)
+              && !manager.moveFarm(oldIdentity, to: firstIdentity), "self and stale drops refused")
+        check(defaults.data(forKey: "ft2FarmCatalog_v2") == moveSaved, "invalid drops do not rewrite persistence")
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save")
+        ], sourceID: source)
+        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity]
+              && manager.farms[1].name == "Renamed A", "rename and metadata order do not reorder cards")
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save")
+        ], sourceID: source)
+        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity]
+              && manager.farms[1].isInactive, "unregistered farm retains custom position")
+        check(manager.moveFarm(firstIdentity, to: newIdentity)
+              && manager.visibleFarms.map(\.identity) == [firstIdentity, newIdentity], "inactive card can move")
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save"),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 48, creationTime: ticks, name: "New C"), reference: a, message: "")
+        ], sourceID: source)
+        let thirdIdentity = manager.farms[2].identity!
+        check(manager.visibleFarms.map(\.identity) == [firstIdentity, newIdentity, thirdIdentity]
+              && !manager.farms[0].isInactive, "reactivation keeps position and new farm appends")
+        check(manager.moveFarm(firstIdentity, to: thirdIdentity)
+              && manager.visibleFarms.map(\.identity) == [newIdentity, thirdIdentity, firstIdentity], "forward drop moves first card to last")
+        manager.catalog.merge([
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 48, creationTime: thirdIdentity.creationTime, name: "New C"), reference: a, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: ticks + 20_000_000, name: "Reused B"), reference: nil, message: "No save")
+        ], sourceID: source)
+        let reusedIdentity = manager.farms[3].identity!
+        check(manager.visibleFarms.map(\.identity) == [newIdentity, thirdIdentity, firstIdentity, reusedIdentity]
+              && manager.farms[0].isInactive, "slot reuse appends distinct identity without moving or reactivating old record")
+        check(manager.removeInactiveFarm(identity: newIdentity)
+              && manager.visibleFarms.map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "delete removes only its position")
+        check(manager.catalog.sources == sourcesBeforeDelete && manager.catalog.activeSourceID == source
+              && manager.farms[1].automaticReference == a, "ordering preserves bookmarks sources and references")
+        let finalReload = FarmManager(defaults: defaults)
+        check(finalReload.visibleFarms.map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "final order and deletion persist together")
+        var multiSource = manager.catalog
+        let foreignSource = UUID()
+        let foreign = FarmData(id: 100, name: "Foreign", identity: FarmIdentity(sourceID: foreignSource, slotIndex: 0, creationTime: ticks))
+        multiSource.farms.insert(foreign, at: 1)
+        let recordsBefore = multiSource.farms
+        check(multiSource.moveFarm(reusedIdentity, to: thirdIdentity)
+              && multiSource.farms[1] == foreign, "other source retains exact array position")
+        check(Set(multiSource.farms.compactMap(\.identity)) == Set(recordsBefore.compactMap(\.identity))
+              && multiSource.farms.allSatisfy { recordsBefore.contains($0) }, "move changes only order not farm data")
+        check(!multiSource.moveFarm(thirdIdentity, to: foreign.identity!), "cross-source drop refused")
         print("Passed \(checks) manager checks")
     }
 }

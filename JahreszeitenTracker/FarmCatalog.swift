@@ -78,6 +78,20 @@ nonisolated struct FarmCatalog: Codable, Sendable {
         return farms.filter { $0.identity?.sourceID == sourceID }
     }
 
+    /// Move to the target card's position, preserving every record and other sources.
+    @discardableResult
+    mutating func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity) -> Bool {
+        guard identity != target, identity.sourceID == target.sourceID else { return false }
+        let positions = farms.indices.filter { farms[$0].identity?.sourceID == identity.sourceID }
+        var ordered = positions.map { farms[$0] }
+        guard let from = ordered.firstIndex(where: { $0.identity == identity }),
+              let to = ordered.firstIndex(where: { $0.identity == target }) else { return false }
+        let moved = ordered.remove(at: from)
+        ordered.insert(moved, at: to)
+        for (position, farm) in zip(positions, ordered) { farms[position] = farm }
+        return true
+    }
+
     /// Removes only a confirmed, no-longer-registered tracker record.
     /// Full identity prevents removal of a new farm reusing the same slot.
     @discardableResult
