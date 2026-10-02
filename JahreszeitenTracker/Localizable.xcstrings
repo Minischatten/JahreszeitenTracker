@@ -867,6 +867,91 @@
     },
     "JahreszeitenTracker": {
       "shouldTranslate": false
+    },
+    "Farm ausblenden": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm ausblenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Farm"
+          }
+        }
+      }
+    },
+    "Ausgeblendete Farmen einblenden": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendete Farmen einblenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Hidden Farms"
+          }
+        }
+      }
+    },
+    "Ausgeblendet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden"
+          }
+        }
+      }
+    },
+    "Keine Farmen eingeblendet": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Farmen eingeblendet"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Farms Shown"
+          }
+        }
+      }
+    },
+    "Ausgeblendete Farmen können über „Darstellung → Ausgeblendete Farmen einblenden“ angezeigt werden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendete Farmen können über „Darstellung → Ausgeblendete Farmen einblenden“ angezeigt werden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To see hidden farms, choose View → Show Hidden Farms."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

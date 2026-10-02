@@ -31,6 +31,7 @@ extension Season {
 
 struct ContentView: View {
     @EnvironmentObject private var manager: FarmManager
+    @EnvironmentObject private var session: FarmPresentationSession
     @State private var navigation = FarmNavigation()
 
     var body: some View {
@@ -42,7 +43,8 @@ struct ContentView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
             }
-            if manager.visibleFarms.count > 1, navigation.detail(in: manager.visibleFarms) != nil {
+            if let detail = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms),
+               manager.knownFarms.count > 1 || detail.hidden || navigation.openedIdentity != nil {
                 HStack {
                     Button { navigation.back() } label: {
                         Label(String(localized: "Alle Farmen"), systemImage: "chevron.left")
@@ -51,11 +53,14 @@ struct ContentView: View {
                 }
                 .padding()
             }
-            if manager.visibleFarms.isEmpty {
+            if navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms) == nil && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty {
                 ContentUnavailableView {
-                    Label(String(localized: "Keine Hauptfarm"), systemImage: "leaf")
+                    Label(manager.knownFarms.isEmpty ? String(localized: "Keine Hauptfarm")
+                          : String(localized: "Keine Farmen eingeblendet"), systemImage: "leaf")
                 } description: {
-                    Text(manager.hasSaveFolder
+                    Text(!manager.knownFarms.isEmpty
+                         ? String(localized: "Ausgeblendete Farmen können über „Darstellung → Ausgeblendete Farmen einblenden“ angezeigt werden.")
+                         : manager.hasSaveFolder
                          ? String(localized: "Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier.")
                          : String(localized: "Wähle deinen FT2-Spielstandordner in den Einstellungen."))
                 }
@@ -63,14 +68,19 @@ struct ContentView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     let now = Date()
                     ScrollView {
-                        if let farm = navigation.detail(in: manager.visibleFarms) {
-                            FarmDetailView(farm: farm, state: manager.state(for: farm, at: now)) { navigation.back() }
+                        if let farm = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms) {
+                            FarmDetailView(farm: farm, state: manager.state(for: farm, at: now),
+                                           onHiddenChanged: { hidden in
+                                               guard let identity = farm.identity else { return }
+                                               navigation.open(identity)
+                                               manager.setHidden(hidden, identity: identity)
+                                           }, onDeleted: { navigation.back() })
                                 .frame(maxWidth: 640)
                                 .frame(maxWidth: .infinity)
                                 .padding(20)
                         } else {
                             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 16)], spacing: 16) {
-                                ForEach(manager.visibleFarms) { farm in
+                                ForEach(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms)) { farm in
                                     OverviewFarmButton(farm: farm, state: manager.state(for: farm, at: now)) {
                                         guard let identity = farm.identity else { return }
                                         manager.selectedFarmIdentity = identity
@@ -87,13 +97,24 @@ struct ContentView: View {
         .frame(minWidth: 380, minHeight: 440)
         .background(Color(nsColor: .windowBackgroundColor))
         .background {
-            InitialWindowFocus(suppressInitialControlFocus: manager.visibleFarms.count > 1)
+            InitialWindowFocus(suppressInitialControlFocus: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).count > 1)
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
         .navigationTitle("JahreszeitenTracker")
-        .onChange(of: manager.visibleFarms.map(\.identity)) { _, identities in
-            if identities.count < 2 || !identities.contains(navigation.openedIdentity) { navigation.back() }
+        .onChange(of: manager.knownFarms.map(\.identity)) { _, identities in
+            if let opened = navigation.openedIdentity, !identities.contains(opened) { navigation.reset() }
+        }
+        .onChange(of: manager.catalog.activeSourceID ?? manager.catalog.displaySourceID) { _, _ in
+            navigation.reset()
+        }
+        .onChange(of: session.showHiddenFarms) { previouslyShown, _ in
+            // A lone hidden farm may have opened automatically while the menu
+            // was enabled. Preserve that detail when the user disables it.
+            let previousFarms = manager.knownFarms.filter { previouslyShown || !$0.hidden }
+            if let identity = navigation.detail(in: previousFarms, knownFarms: manager.knownFarms)?.identity {
+                navigation.open(identity)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .automatic) {
@@ -109,6 +130,7 @@ private struct FarmDetailView: View {
     @EnvironmentObject private var manager: FarmManager
     let farm: FarmData
     let state: SeasonState?
+    var onHiddenChanged: ((Bool) -> Void)? = nil
     let onDeleted: () -> Void
     @State private var deletionCandidate: FarmData?
     @State private var confirmsDeletion = false
@@ -116,6 +138,13 @@ private struct FarmDetailView: View {
     var body: some View {
         VStack(spacing: 20) {
             FarmCardView(farm: farm, state: state, compact: false)
+            Toggle(String(localized: "Farm ausblenden"), isOn: Binding(
+                get: { manager.knownFarms.first { $0.identity == farm.identity }?.hidden ?? farm.hidden },
+                set: { hidden in
+                    if let onHiddenChanged { onHiddenChanged(hidden) }
+                    else if let identity = farm.identity { manager.setHidden(hidden, identity: identity) }
+                }))
+                .toggleStyle(.checkbox)
             if let explanation = farm.versionExplanation() {
                 Label(explanation, systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
@@ -166,6 +195,7 @@ private nonisolated struct FarmCardDrag: Codable, Transferable {
 
 private struct OverviewFarmButton: View {
     @EnvironmentObject private var manager: FarmManager
+    @EnvironmentObject private var session: FarmPresentationSession
     let farm: FarmData
     let state: SeasonState?
     let action: () -> Void
@@ -187,10 +217,11 @@ private struct OverviewFarmButton: View {
         .draggable(FarmCardDrag(identity: farm.identity))
         .dropDestination(for: FarmCardDrag.self) { items, _ in
             guard items.count == 1, let identity = items.first?.identity, let target = farm.identity else { return false }
-            return manager.moveFarm(identity, to: target)
+            return manager.moveFarm(identity, to: target, showHiddenFarms: session.showHiddenFarms)
         } isTargeted: { isDropTarget = $0 }
         .onHover { isHovered = $0 }
         .accessibilityLabel(farm.displayName)
+        .accessibilityValue(farm.hidden ? String(localized: "Ausgeblendet") : "")
         .accessibilityHint(String(localized: "Farm öffnen"))
     }
 }

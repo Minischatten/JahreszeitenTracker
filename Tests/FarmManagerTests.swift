@@ -15,6 +15,7 @@ struct FarmManagerTests {
         defer { defaults.removePersistentDomain(forName: suite) }
         let old = Data("obsolete four-farm configuration".utf8)
         defaults.set(old, forKey: "savedFarmsData_v1")
+        let session = FarmPresentationSession()
         let manager = FarmManager(defaults: defaults)
         check(manager.farms.isEmpty, "manager ignores old four-farm key")
         check(manager.farms.isEmpty, "empty catalog controls safe")
@@ -79,7 +80,7 @@ struct FarmManagerTests {
         check(cleanJSON["selectedFarmID"] == nil && cleanJSON["selectedFarmIdentity"] != nil, "selection stored by farm identity")
         reloaded.disconnectSaveFolder()
         check(!reloaded.hasSaveFolder && reloaded.farms[1].automaticReference == b, "disconnect retains reference")
-        check(reloaded.visibleFarms.count == 2 && reloaded.state(for: reloaded.farms[1], at: b.savedAt) == b.state(at: b.savedAt), "disconnect still presents last references")
+        check(reloaded.visibleFarms().count == 2 && reloaded.state(for: reloaded.farms[1], at: b.savedAt) == b.state(at: b.savedAt), "disconnect still presents last references")
         check(FarmSyncState.forFarm(reloaded.farms[1]) == .lastStand, "disconnected reference status")
         let firstIdentity = manager.farms[0].identity!
         let oldIdentity = manager.farms[1].identity!
@@ -89,7 +90,7 @@ struct FarmManagerTests {
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: ticks + 10_000_000, name: "New B"), reference: nil, message: "No save")
         ], sourceID: source)
         let newIdentity = manager.farms[2].identity!
-        check(manager.visibleFarms.map(\.identity) == [firstIdentity, oldIdentity, newIdentity], "reused slot keeps inactive farm in place and appends new identity")
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [firstIdentity, oldIdentity, newIdentity], "reused slot keeps inactive farm in place and appends new identity")
         check(manager.farms[1].automaticReference == b && FarmSyncState.forFarm(manager.farms[1]) == .notFound,
               "old reused-slot record retains countdown and neutral status")
         check(!manager.farms[2].isInactive && manager.farms[2].automaticReference == nil,
@@ -115,51 +116,51 @@ struct FarmManagerTests {
         check(manager.farms.count == 2 && !manager.farms.contains { $0.identity == oldIdentity },
               "later scans do not resurrect removed unregistered identity")
         // Reordering uses the existing array, including inactive records.
-        check(manager.moveFarm(newIdentity, to: firstIdentity), "drop moves last card to first")
-        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity], "custom order applied")
+        check(manager.moveFarm(newIdentity, to: firstIdentity, showHiddenFarms: session.showHiddenFarms), "drop moves last card to first")
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [newIdentity, firstIdentity], "custom order applied")
         let reorderedReload = FarmManager(defaults: defaults)
-        check(reorderedReload.visibleFarms.map(\.identity) == [newIdentity, firstIdentity], "custom order survives restart")
+        check(reorderedReload.visibleFarms().map(\.identity) == [newIdentity, firstIdentity], "custom order survives restart")
         let moveSaved = defaults.data(forKey: "ft2FarmCatalog_v2")
-        check(!manager.moveFarm(newIdentity, to: newIdentity)
-              && !manager.moveFarm(oldIdentity, to: firstIdentity), "self and stale drops refused")
+        check(!manager.moveFarm(newIdentity, to: newIdentity, showHiddenFarms: session.showHiddenFarms)
+              && !manager.moveFarm(oldIdentity, to: firstIdentity, showHiddenFarms: session.showHiddenFarms), "self and stale drops refused")
         check(defaults.data(forKey: "ft2FarmCatalog_v2") == moveSaved, "invalid drops do not rewrite persistence")
         manager.catalog.merge([
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save")
         ], sourceID: source)
-        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity]
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [newIdentity, firstIdentity]
               && manager.farms[1].name == "Renamed A", "rename and metadata order do not reorder cards")
         manager.catalog.merge([
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save")
         ], sourceID: source)
-        check(manager.visibleFarms.map(\.identity) == [newIdentity, firstIdentity]
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [newIdentity, firstIdentity]
               && manager.farms[1].isInactive, "unregistered farm retains custom position")
-        check(manager.moveFarm(firstIdentity, to: newIdentity)
-              && manager.visibleFarms.map(\.identity) == [firstIdentity, newIdentity], "inactive card can move")
+        check(manager.moveFarm(firstIdentity, to: newIdentity, showHiddenFarms: session.showHiddenFarms)
+              && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [firstIdentity, newIdentity], "inactive card can move")
         manager.catalog.merge([
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: newIdentity.creationTime, name: "Renamed B"), reference: nil, message: "No save"),
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 48, creationTime: ticks, name: "New C"), reference: a, message: "")
         ], sourceID: source)
         let thirdIdentity = manager.farms[2].identity!
-        check(manager.visibleFarms.map(\.identity) == [firstIdentity, newIdentity, thirdIdentity]
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [firstIdentity, newIdentity, thirdIdentity]
               && !manager.farms[0].isInactive, "reactivation keeps position and new farm appends")
-        check(manager.moveFarm(firstIdentity, to: thirdIdentity)
-              && manager.visibleFarms.map(\.identity) == [newIdentity, thirdIdentity, firstIdentity], "forward drop moves first card to last")
+        check(manager.moveFarm(firstIdentity, to: thirdIdentity, showHiddenFarms: session.showHiddenFarms)
+              && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [newIdentity, thirdIdentity, firstIdentity], "forward drop moves first card to last")
         manager.catalog.merge([
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: firstIdentity.creationTime, name: "Renamed A"), reference: a, message: ""),
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 48, creationTime: thirdIdentity.creationTime, name: "New C"), reference: a, message: ""),
             FarmReading(metadata: FT2FarmMetadata(slotIndex: 16, creationTime: ticks + 20_000_000, name: "Reused B"), reference: nil, message: "No save")
         ], sourceID: source)
         let reusedIdentity = manager.farms[3].identity!
-        check(manager.visibleFarms.map(\.identity) == [newIdentity, thirdIdentity, firstIdentity, reusedIdentity]
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [newIdentity, thirdIdentity, firstIdentity, reusedIdentity]
               && manager.farms[0].isInactive, "slot reuse appends distinct identity without moving or reactivating old record")
         check(manager.removeInactiveFarm(identity: newIdentity)
-              && manager.visibleFarms.map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "delete removes only its position")
+              && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "delete removes only its position")
         check(manager.catalog.sources == sourcesBeforeDelete && manager.catalog.activeSourceID == source
               && manager.farms[1].automaticReference == a, "ordering preserves bookmarks sources and references")
         let finalReload = FarmManager(defaults: defaults)
-        check(finalReload.visibleFarms.map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "final order and deletion persist together")
+        check(finalReload.visibleFarms().map(\.identity) == [thirdIdentity, firstIdentity, reusedIdentity], "final order and deletion persist together")
         var multiSource = manager.catalog
         let foreignSource = UUID()
         let foreign = FarmData(id: 100, name: "Foreign", identity: FarmIdentity(sourceID: foreignSource, slotIndex: 0, creationTime: ticks))
@@ -203,6 +204,108 @@ struct FarmManagerTests {
         }, sourceID: source)
         check(FarmSyncState.forFarm(manager.farms.first { $0.identity == knownIdentity }!) == .unconfirmedVersion,
               "older compatible fallback cannot roll future reference back or turn green")
+        try hiddenTests()
         print("Passed \(checks) manager checks")
     }
+    static func hiddenTests() throws {
+        let suite = "HiddenFarmTests." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let session = FarmPresentationSession()
+        let manager = FarmManager(defaults: defaults)
+        manager.catalog.selectSource(path: "/synthetic/hidden", bookmark: Data([1]))
+        let source = manager.catalog.activeSourceID!
+        let now = Date()
+        let ticks = TrackerClock.ticksAtUnixEpoch + Int64(now.timeIntervalSince1970) * 10_000_000
+        let reference = SaveReference(gameTime: 100, savedTicks: ticks, nextBoundary: 500, seasonIndex: 0, sourceName: "farm_0_0.data", saveVersion: 347)
+        let metadata = (0..<4).map { FT2FarmMetadata(slotIndex: $0 * 16, creationTime: ticks - 10_000_000, name: "Farm \($0)") }
+        func reading(_ m: FT2FarmMetadata) -> FarmReading { FarmReading(metadata: m, reference: reference, message: "") }
+        manager.catalog.merge(metadata.map(reading), sourceID: source)
+        let ids = manager.knownFarms.map { $0.identity! }
+        let unchanged = manager.farms[1]
+        check(manager.setHidden(true, identity: ids[1]), "hide exact identity")
+        var expected = unchanged; expected.hidden = true
+        check(manager.farms[1] == expected, "hide changes only preference")
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == [ids[0], ids[2], ids[3]], "hidden excluded from presentation")
+        check(manager.knownFarms.count == 4, "hidden remains known")
+        let saved = defaults.data(forKey: "ft2FarmCatalog_v2")!
+        check(!manager.setHidden(true, identity: ids[1]) && defaults.data(forKey: "ft2FarmCatalog_v2") == saved, "no-op preference does not rewrite")
+        var managerPublishes = 0
+        var sessionPublishes = 0
+        let managerObservation = manager.objectWillChange.sink { managerPublishes += 1 }
+        let sessionObservation = session.objectWillChange.sink { sessionPublishes += 1 }
+        session.showHiddenFarms = true
+        check(managerPublishes == 0 && sessionPublishes == 1, "presentation change publishes only session")
+        check(defaults.data(forKey: "ft2FarmCatalog_v2") == saved, "session change does not write defaults")
+        manager.catalog = manager.catalog
+        check(managerPublishes == 1 && sessionPublishes == 1, "catalog publish never publishes session")
+        check(session.showHiddenFarms, "catalog publish preserves presentation choice")
+        withExtendedLifetime((managerObservation, sessionObservation)) {}
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).count == 4, "menu is nonpersistent")
+        let reload = FarmManager(defaults: defaults)
+        check(!FarmPresentationSession().showHiddenFarms && reload.farms[1].hidden, "restart restores hidden but resets menu")
+        session.showHiddenFarms = false
+        check(manager.moveFarm(ids[3], to: ids[0], showHiddenFarms: session.showHiddenFarms), "filtered drop succeeds")
+        check(manager.knownFarms.map(\.identity) == [ids[3], ids[1], ids[0], ids[2]], "hidden position fixed during visible reorder")
+        check(!manager.moveFarm(ids[1], to: ids[0], showHiddenFarms: session.showHiddenFarms), "invisible card cannot drop")
+        session.showHiddenFarms = true
+        check(manager.moveFarm(ids[1], to: ids[3], showHiddenFarms: session.showHiddenFarms), "shown hidden card can move")
+        let order = manager.knownFarms.map(\.identity)
+        let renamed = FT2FarmMetadata(slotIndex: metadata[1].slotIndex, creationTime: metadata[1].creationTime, name: "Renamed hidden farm")
+        manager.catalog.merge([metadata[0], renamed, metadata[2], metadata[3]].map(reading), sourceID: source)
+        check(manager.knownFarms.map(\.identity) == order && manager.farms.first { $0.identity == ids[1] }!.hidden, "rename preserves preference and order")
+        manager.catalog.merge([metadata[0], metadata[2], metadata[3]].map(reading), sourceID: source)
+        check(manager.farms.first { $0.identity == ids[1] }!.isInactive && manager.farms.first { $0.identity == ids[1] }!.hidden, "removed farm remains hidden")
+        manager.catalog.merge(metadata.map(reading), sourceID: source, metadataVersion: 348)
+        check(manager.farms.first { $0.identity == ids[1] }!.isInactive && manager.farms.first { $0.identity == ids[1] }!.hidden, "unconfirmed registry neither reactivates nor unhides")
+        manager.catalog.apply(CatalogScanResult(readings: nil, message: "invalid future", refreshedBookmark: nil, metadataVersion: 349, metadataRejected: true), sourceID: source)
+        check(manager.farms.first { $0.identity == ids[1] }!.hidden, "parse failure preserves preference")
+        manager.catalog.merge(metadata.map(reading), sourceID: source)
+        check(!manager.farms.first { $0.identity == ids[1] }!.isInactive && manager.farms.first { $0.identity == ids[1] }!.hidden, "reactivation preserves hidden")
+        let reused = FT2FarmMetadata(slotIndex: metadata[1].slotIndex, creationTime: metadata[1].creationTime + 1, name: "New incarnation")
+        manager.catalog.merge([metadata[0], reused, metadata[2], metadata[3]].map(reading), sourceID: source)
+        let newFarm = manager.farms.last!
+        check(newFarm.identity != ids[1] && !newFarm.hidden, "slot reuse is a new visible identity appended")
+        check(manager.farms.first { $0.identity == ids[1] }!.hidden, "slot reuse preserves old hidden record")
+        check(manager.removeInactiveFarm(identity: ids[1]) && !manager.farms.contains { $0.identity == ids[1] }, "delete removes hidden record completely")
+        check(manager.farms.contains { $0.identity == newFarm.identity }, "delete leaves reused identity intact")
+        let restored = FarmManager(defaults: defaults)
+        check(restored.knownFarms.map(\.identity) == manager.knownFarms.map(\.identity), "filtered custom order persists")
+        var oldJSON = try JSONSerialization.jsonObject(with: saved) as! [String: Any]
+        var oldFarms = oldJSON["farms"] as! [[String: Any]]
+        for i in oldFarms.indices { oldFarms[i].removeValue(forKey: "hidden") }
+        oldJSON["farms"] = oldFarms
+        let migrated = FarmCatalog.restored(current: try JSONSerialization.data(withJSONObject: oldJSON), now: now)
+        check(migrated.farms.count == 4 && migrated.farms.allSatisfy { !$0.hidden }, "missing hidden migrates as false without data loss")
+        check(migrated.farms.map(\.identity) == ids && migrated.farms.allSatisfy { $0.automaticReference == reference }, "migration retains references and identities")
+        var navigation = FarmNavigation()
+        let all = migrated.knownFarms
+        check(navigation.detail(in: []) == nil, "no visible farms never auto opens hidden")
+        check(navigation.detail(in: [all[0]])?.identity == ids[0], "one visible farm auto detail")
+        check(navigation.detail(in: all) == nil, "multiple visible farms begin overview")
+        navigation.open(ids[0])
+        check(navigation.detail(in: [], knownFarms: all)?.identity == ids[0], "open detail survives hiding all and menu toggle")
+        check(navigation.detail(in: [all[1]], knownFarms: all)?.identity == ids[0], "open detail never changes to remaining farm")
+        navigation.back()
+        check(navigation.detail(in: [all[1]], knownFarms: all) == nil && navigation.showsOverview, "back explicitly shows overview even with one remaining")
+        navigation.reset()
+        check(navigation.detail(in: [all[1]], knownFarms: all)?.identity == ids[1], "source reset restores normal single entry")
+        navigation.open(ids[0])
+        check(navigation.detail(in: [all[1]], knownFarms: [all[1]]) == nil, "deleted or other-source identity cannot resolve")
+        var menuNavigation = FarmNavigation()
+        let automaticHiddenDetail = menuNavigation.detail(in: [all[0]], knownFarms: all)!
+        menuNavigation.open(automaticHiddenDetail.identity!)
+        check(menuNavigation.detail(in: [], knownFarms: all)?.identity == ids[0], "menu handoff preserves automatically opened hidden singleton")
+        check(manager.setHidden(true, identity: newFarm.identity!), "hide new incarnation independently")
+        session.showHiddenFarms = false
+        let beforeShow = manager.knownFarms.map(\.identity)
+        check(manager.setHidden(false, identity: newFarm.identity!) && manager.knownFarms.map(\.identity) == beforeShow, "unhide preserves catalog position")
+        check(!manager.setHidden(true, identity: ids[1]), "deleted identity cannot be updated")
+        for farm in manager.knownFarms { manager.setHidden(true, identity: farm.identity!) }
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty && !manager.knownFarms.isEmpty, "all hidden distinguishes empty registry from empty presentation")
+        session.showHiddenFarms = true
+        check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == manager.knownFarms.map(\.identity), "menu restores all cards in catalog order")
+
+    }
+
 }

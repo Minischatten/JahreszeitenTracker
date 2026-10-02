@@ -7,6 +7,11 @@ struct FarmCardView: View {
 
     var body: some View {
         VStack(spacing: compact ? 12 : 20) {
+            if farm.hidden {
+                Label(String(localized: "Ausgeblendet"), systemImage: "eye.slash")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Text(farm.displayName)
                 .font(compact ? .headline : .title2.weight(.semibold))
                 .multilineTextAlignment(.center)

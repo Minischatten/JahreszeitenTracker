@@ -22,6 +22,7 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
     var referenceVerified: Bool?
     var status: String?
     var compatibility: FarmCompatibility?
+    var hidden = false
 
     var isInactive: Bool { registered == false }
 
@@ -48,6 +49,25 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? String(localized: "FT2-Farm") : trimmed
+    }
+}
+
+extension FarmData {
+    private nonisolated enum CodingKeys: String, CodingKey {
+        case id, name, automaticReference, identity, available, registered, referenceVerified, status, compatibility, hidden
+    }
+    nonisolated init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(Int.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        automaticReference = try values.decodeIfPresent(SaveReference.self, forKey: .automaticReference)
+        identity = try values.decodeIfPresent(FarmIdentity.self, forKey: .identity)
+        available = try values.decodeIfPresent(Bool.self, forKey: .available)
+        registered = try values.decodeIfPresent(Bool.self, forKey: .registered)
+        referenceVerified = try values.decodeIfPresent(Bool.self, forKey: .referenceVerified)
+        status = try values.decodeIfPresent(String.self, forKey: .status)
+        compatibility = try values.decodeIfPresent(FarmCompatibility.self, forKey: .compatibility)
+        hidden = try values.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
     }
 }
 
@@ -97,16 +117,20 @@ nonisolated struct FarmCatalog: Codable, Sendable {
         try container.encodeIfPresent(selectedFarmIdentity, forKey: .selectedFarmIdentity)
         try container.encodeIfPresent(displaySourceID, forKey: .displaySourceID)
     }
-    var visibleFarms: [FarmData] {
+    var knownFarms: [FarmData] {
         let sourceID = activeSourceID ?? displaySourceID
         return farms.filter { $0.identity?.sourceID == sourceID }
     }
+    // Existing catalog clients refer to source membership, never a UI filter.
+    var visibleFarms: [FarmData] { knownFarms }
 
     /// Move to the target card's position, preserving every record and other sources.
     @discardableResult
-    mutating func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity) -> Bool {
+    mutating func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity, includingHidden: Bool = true) -> Bool {
         guard identity != target, identity.sourceID == target.sourceID else { return false }
-        let positions = farms.indices.filter { farms[$0].identity?.sourceID == identity.sourceID }
+        let positions = farms.indices.filter {
+            farms[$0].identity?.sourceID == identity.sourceID && (includingHidden || !farms[$0].hidden)
+        }
         var ordered = positions.map { farms[$0] }
         guard let from = ordered.firstIndex(where: { $0.identity == identity }),
               let to = ordered.firstIndex(where: { $0.identity == target }) else { return false }
@@ -257,12 +281,18 @@ nonisolated struct FarmCatalog: Codable, Sendable {
 // Navigation is transient UI state; persisted identities remain in the catalog.
 nonisolated struct FarmNavigation {
     var openedIdentity: FarmIdentity?
-    func detail(in farms: [FarmData]) -> FarmData? {
+    var showsOverview = false
+    func detail(in farms: [FarmData], knownFarms: [FarmData]? = nil) -> FarmData? {
+        if let openedIdentity {
+            return (knownFarms ?? farms).first { $0.identity == openedIdentity }
+        }
+        guard !showsOverview else { return nil }
         if farms.count == 1 { return farms.first }
-        return farms.first(where: { $0.identity != nil && $0.identity == openedIdentity })
+        return nil
     }
-    mutating func open(_ identity: FarmIdentity) { openedIdentity = identity }
-    mutating func back() { openedIdentity = nil }
+    mutating func open(_ identity: FarmIdentity) { openedIdentity = identity; showsOverview = false }
+    mutating func back() { openedIdentity = nil; showsOverview = true }
+    mutating func reset() { openedIdentity = nil; showsOverview = false }
 }
 
 nonisolated enum FarmSyncState {

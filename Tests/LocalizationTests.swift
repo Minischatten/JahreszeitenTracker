@@ -50,6 +50,7 @@ struct LocalizationTests {
         let suite = "FT2LocalizationTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
+        let session = FarmPresentationSession()
         let manager = FarmManager(defaults: defaults)
         manager.catalog.selectSource(path: "/synthetic/read-only/Café", bookmark: Data([1]))
         let source = manager.catalog.activeSourceID!
@@ -74,17 +75,17 @@ struct LocalizationTests {
         noReference.compatibility = FarmCompatibility(metadataVersion: 348)
         check(noReference.versionExplanation()?.contains(language == "de" ? "Es liegt noch kein gültiger Spielstand" : "No valid save is available") == true, "complete unconfirmed-without-reference template")
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        try render(ContentView().environmentObject(manager), size: NSSize(width: 640, height: 900), to: output.appendingPathComponent("\(language)-overview.png"))
-        try render(ContentView().environmentObject(manager), size: NSSize(width: 380, height: 900), to: output.appendingPathComponent("\(language)-narrow.png"))
-        try render(FarmDetailView(farm: manager.farms[2], state: manager.state(for: manager.farms[2], at: now), onDeleted: {}).environmentObject(manager), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-detail.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 900), to: output.appendingPathComponent("\(language)-overview.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 380, height: 900), to: output.appendingPathComponent("\(language)-narrow.png"))
+        try render(FarmDetailView(farm: manager.farms[2], state: manager.state(for: manager.farms[2], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-detail.png"))
         manager.catalog.merge((0..<3).map { FarmReading(metadata: metadata[$0], reference: references[$0], message: "",
             rejectedVersions: $0 == 2 ? [349] : []) }, sourceID: source)
-        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager), size: NSSize(width: 640, height: 1000), to: output.appendingPathComponent("\(language)-inactive.png"))
+        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 1000), to: output.appendingPathComponent("\(language)-inactive.png"))
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 348, rejected: false, deferredFarms: 1)
         check(manager.catalogVersionNotice?.contains("348") == true, "catalog version parameter")
         if language == "en" { check(manager.catalogVersionNotice?.hasPrefix("Save version 348 has not yet been verified.") == true, "English global version notice") }
-        try render(SettingsView().environmentObject(manager), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
-        try render(ContentView().environmentObject(manager), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
+        try render(SettingsView().environmentObject(manager).environmentObject(session), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 349, rejected: true, deferredFarms: 0)
         check(manager.catalogVersionNotice?.contains("349") == true, "rejected catalog parameter")
         check(manager.farms.map(\.name) == persistedNames, "rendering never localizes stored names")
@@ -101,6 +102,15 @@ struct LocalizationTests {
             content.layer?.backgroundColor = NSColor.white.cgColor
             try snapshot(content, to: output.appendingPathComponent("\(language)-delete-dialog.png"))
         }
+        check(String(localized: "Farm ausblenden") == (language == "de" ? "Farm ausblenden" : "Hide Farm"), "native checkbox label")
+        check(String(localized: "Ausgeblendete Farmen einblenden") == (language == "de" ? "Ausgeblendete Farmen einblenden" : "Show Hidden Farms"), "native menu label")
+        check(String(localized: "Keine Farmen eingeblendet") == (language == "de" ? "Keine Farmen eingeblendet" : "No Farms Shown"), "hidden empty title")
+        check(String(localized: "Ausgeblendet") == (language == "de" ? "Ausgeblendet" : "Hidden"), "hidden accessibility marker")
+        for farm in manager.knownFarms { manager.setHidden(true, identity: farm.identity!) }
+        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 780), to: output.appendingPathComponent("\(language)-all-hidden.png"))
+        session.showHiddenFarms = true
+        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-hidden-overview.png"))
+        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 1100), to: output.appendingPathComponent("\(language)-hidden-inactive-detail.png"))
         print("Passed \(checks) bundled localization/UI checks (\(language)); resources: \(Bundle.main.resourcePath ?? "")")
     }
 

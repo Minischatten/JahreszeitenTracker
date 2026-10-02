@@ -30,15 +30,18 @@ final class FarmManager: ObservableObject {
     }
 
     var hasSaveFolder: Bool { catalog.activeSourceID != nil }
-    var visibleFarms: [FarmData] { catalog.visibleFarms }
+    var knownFarms: [FarmData] { catalog.knownFarms }
+    func visibleFarms(showHiddenFarms: Bool = false) -> [FarmData] {
+        knownFarms.filter { showHiddenFarms || !$0.hidden }
+    }
     var selectedFarm: FarmData? {
-        visibleFarms.first(where: { $0.identity == catalog.selectedFarmIdentity }) ?? visibleFarms.first
+        knownFarms.first(where: { $0.identity == catalog.selectedFarmIdentity }) ?? knownFarms.first
     }
     var selectedFarmIdentity: FarmIdentity? {
         get { selectedFarm?.identity }
         set {
             guard let newValue,
-                  visibleFarms.contains(where: { $0.identity == newValue }),
+                  knownFarms.contains(where: { $0.identity == newValue }),
                   newValue != selectedFarmIdentity else { return }
             catalog.selectedFarmIdentity = newValue
         }
@@ -89,12 +92,21 @@ final class FarmManager: ObservableObject {
     }
 
     @discardableResult
-    func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity) -> Bool {
+    func setHidden(_ hidden: Bool, identity: FarmIdentity) -> Bool {
+        guard let index = catalog.farms.firstIndex(where: { $0.identity == identity }),
+              catalog.farms[index].hidden != hidden else { return false }
+        catalog.farms[index].hidden = hidden
+        return true
+    }
+
+    @discardableResult
+    func moveFarm(_ identity: FarmIdentity, to target: FarmIdentity, showHiddenFarms: Bool = false) -> Bool {
+        let visibleFarms = visibleFarms(showHiddenFarms: showHiddenFarms)
         guard visibleFarms.count > 1,
               visibleFarms.contains(where: { $0.identity == identity }),
               visibleFarms.contains(where: { $0.identity == target }) else { return false }
         var updated = catalog
-        guard updated.moveFarm(identity, to: target) else { return false }
+        guard updated.moveFarm(identity, to: target, includingHidden: showHiddenFarms) else { return false }
         catalog = updated
         return true
     }
@@ -133,8 +145,8 @@ final class FarmManager: ObservableObject {
         }
         sourceStatus = readings.isEmpty ? "FT2: keine Hauptfarm registriert" : ""
         catalog.apply(result, sourceID: sourceID)
-        if !visibleFarms.contains(where: { $0.identity == catalog.selectedFarmIdentity }) {
-            catalog.selectedFarmIdentity = visibleFarms.first?.identity
+        if !knownFarms.contains(where: { $0.identity == catalog.selectedFarmIdentity }) {
+            catalog.selectedFarmIdentity = knownFarms.first?.identity
         }
     }
 }
