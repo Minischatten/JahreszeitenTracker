@@ -192,51 +192,80 @@ private struct OverviewFarmButton: View {
     }
 }
 
-// AppKit chooses the first eligible button when a window first becomes key.
-// Clear that automatic initial choice once, without disabling keyboard focus or
-// changing focus when returning to the overview or reactivating the window.
+// Give AppKit a neutral initial responder before the window is presented.
+// Later keyboard focus, navigation and window activation remain untouched.
 private struct InitialWindowFocus: NSViewRepresentable {
     let suppressInitialControlFocus: Bool
 
-    func makeNSView(context: Context) -> FocusView { FocusView() }
+    func makeNSView(context: Context) -> FocusView {
+        let view = FocusView()
+        view.suppressInitialControlFocus = suppressInitialControlFocus
+        return view
+    }
+
     func updateNSView(_ view: FocusView, context: Context) {
         view.suppressInitialControlFocus = suppressInitialControlFocus
+        view.configureInitialResponder()
     }
 
     final class FocusView: NSView {
         var suppressInitialControlFocus = false
-        private var didActivate = false
-        private var observer: NSObjectProtocol?
+        private var configuredInitialResponder = false
+        private var handedOffKeyboardFocus = false
+
+        // A plain NSView draws no control focus ring; native cards retain theirs.
+        override var acceptsFirstResponder: Bool { !handedOffKeyboardFocus }
+        // The helper is an explicit startup responder, never a normal Tab stop.
+        override var canBecomeKeyView: Bool { false }
+
+        override func keyDown(with event: NSEvent) {
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            guard event.keyCode == 48,
+                  modifiers.intersection([.command, .control, .option]).isEmpty else {
+                super.keyDown(with: event)
+                return
+            }
+            handOffKeyboardFocus(backwards: modifiers.contains(.shift))
+        }
+
+        private func handOffKeyboardFocus(backwards: Bool) {
+            guard let window, window.firstResponder === self else { return }
+            // Resolve the current public key-view loop at the actual key event.
+            window.recalculateKeyViewLoop()
+            let ownTarget = backwards ? previousValidKeyView : nextValidKeyView
+            var anchor: NSView = self
+            var target = ownTarget
+            // A zero-size background may not be linked into the computed loop.
+            // Use the content root as the public entry anchor in that case.
+            if target == nil || target === self {
+                if let root = window.contentView {
+                    anchor = root
+                    target = backwards ? root.previousValidKeyView : root.nextValidKeyView
+                }
+            }
+            guard let target, target !== self, target.window === window,
+                  target.canBecomeKeyView else { return }
+            if backwards {
+                window.selectKeyView(preceding: anchor)
+            } else {
+                window.selectKeyView(following: anchor)
+            }
+            if window.firstResponder !== self {
+                handedOffKeyboardFocus = true
+                if window.initialFirstResponder === self { window.initialFirstResponder = nil }
+            }
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-            observer = nil
-            guard let window, !didActivate else { return }
-            if window.isKeyWindow {
-                handleInitialActivation()
-                return
-            }
-            observer = NotificationCenter.default.addObserver(
-                forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main
-            ) { [weak self] _ in
-                MainActor.assumeIsolated { self?.handleInitialActivation() }
-            }
+            configureInitialResponder()
         }
 
-        private func handleInitialActivation() {
-            guard !didActivate else { return }
-            didActivate = true
-            if let observer { NotificationCenter.default.removeObserver(observer) }
-            observer = nil
-            // Do not interfere with an activation initiated by keyboard input.
-            if suppressInitialControlFocus, NSApp.currentEvent?.type != .keyDown {
-                window?.makeFirstResponder(nil)
-            }
-        }
-
-        deinit {
-            if let observer { NotificationCenter.default.removeObserver(observer) }
+        func configureInitialResponder() {
+            guard let window, !configuredInitialResponder else { return }
+            configuredInitialResponder = true
+            guard suppressInitialControlFocus, !window.isVisible, !window.isKeyWindow else { return }
+            window.initialFirstResponder = self
         }
     }
 }
