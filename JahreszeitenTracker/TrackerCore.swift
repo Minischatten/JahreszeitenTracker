@@ -12,12 +12,53 @@ nonisolated enum TrackerClock {
     }
 }
 
+/// Central, explicitly tested versions. Newer versions are only structurally probed.
+nonisolated enum FT2VersionPolicy {
+    static let confirmed: Set<Int> = [347]
+    static func isConfirmed(_ version: Int) -> Bool { confirmed.contains(version) }
+    static func mayRead(_ version: Int) -> Bool { isConfirmed(version) || version > 347 }
+}
+
+nonisolated struct FT2VersionError: Error, LocalizedError {
+    let version: Int?
+    let reason: String
+    var errorDescription: String? { reason }
+}
+
+nonisolated struct FarmCompatibility: Codable, Equatable, Sendable {
+    var metadataVersion: Int? = nil
+    var observedPlotVersion: Int? = nil
+    var rejectedVersions: [Int] = []
+    var metadataRejected = false
+
+    var hasRejectedVersion: Bool { !rejectedVersions.isEmpty || metadataRejected }
+    var unconfirmedVersions: [Int] { versionsUnconfirmed(by: FT2VersionPolicy.confirmed) }
+    func versionsUnconfirmed(by confirmedVersions: Set<Int>) -> [Int] {
+        Array(Set(([metadataVersion, observedPlotVersion].compactMap { $0 } + rejectedVersions)
+            .filter { !confirmedVersions.contains($0) })).sorted()
+    }
+}
+
+nonisolated struct MetadataNotice: Codable, Equatable, Sendable {
+    let version: Int
+    let rejected: Bool
+    let deferredFarms: Int
+}
+
 nonisolated struct SaveReference: Codable, Equatable, Sendable {
     let gameTime: Int64
     let savedTicks: Int64
     let nextBoundary: Int64
     let seasonIndex: Int
     let sourceName: String
+    let saveVersion: Int?
+    var version: Int { saveVersion ?? 347 }
+
+    init(gameTime: Int64, savedTicks: Int64, nextBoundary: Int64, seasonIndex: Int,
+         sourceName: String, saveVersion: Int? = nil) {
+        self.gameTime = gameTime; self.savedTicks = savedTicks; self.nextBoundary = nextBoundary
+        self.seasonIndex = seasonIndex; self.sourceName = sourceName; self.saveVersion = saveVersion
+    }
 
     func validated(now: Date) throws -> SaveReference {
         let saved = try TrackerClock.date(ticks: savedTicks)

@@ -48,6 +48,17 @@ final class FarmManager: ObservableObject {
         return saveFolderAvailable ? loc("Spielstandordner verfügbar", "Save folder available")
             : loc("Spielstandordner derzeit nicht verfügbar", "Save folder currently unavailable")
     }
+    var catalogVersionNotice: String? {
+        guard let source = catalog.sources.first(where: { $0.id == (catalog.activeSourceID ?? catalog.displaySourceID) }),
+              let notice = source.metadataNotice else { return nil }
+        if notice.rejected {
+            return loc("Spielstandversion \(notice.version) konnte nicht sicher gelesen werden. Vorhandene Farmen und Referenzen bleiben erhalten.",
+                       "Save version \(notice.version) could not be read safely. Existing farms and references are retained.")
+        }
+        guard !FT2VersionPolicy.isConfirmed(notice.version) else { return nil }
+        return loc("Spielstandversion \(notice.version) ist noch nicht bestätigt. Neue Farmen, Umbenennungen und Registrierungsänderungen werden erst nach Bestätigung übernommen.",
+                   "Save version \(notice.version) is not yet confirmed. New farms, names and registration changes require confirmation.")
+    }
     var sourcePath: String? { catalog.sources.first(where: { $0.id == catalog.activeSourceID })?.path }
     func state(for farm: FarmData, at date: Date) -> SeasonState? {
         farm.automaticReference?.state(at: date)
@@ -119,14 +130,12 @@ final class FarmManager: ObservableObject {
             catalog.sources[index].bookmark = refreshed
         }
         guard let readings = result.readings else {
-            for i in catalog.farms.indices where catalog.farms[i].identity?.sourceID == sourceID {
-                catalog.farms[i].available = false
-            }
+            catalog.apply(result, sourceID: sourceID)
             sourceStatus = loc("FT2: Referenzen bleiben erhalten — ", "FT2: references retained — ") + result.message
             return
         }
         sourceStatus = readings.isEmpty ? loc("FT2: keine Hauptfarm registriert", "FT2: no main farm registered") : ""
-        catalog.merge(readings, sourceID: sourceID)
+        catalog.apply(result, sourceID: sourceID)
         if !visibleFarms.contains(where: { $0.identity == catalog.selectedFarmIdentity }) {
             catalog.selectedFarmIdentity = visibleFarms.first?.identity
         }

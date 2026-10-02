@@ -172,6 +172,39 @@ struct FarmManagerTests {
         check(Set(multiSource.farms.compactMap(\.identity)) == Set(recordsBefore.compactMap(\.identity))
               && multiSource.farms.allSatisfy { recordsBefore.contains($0) }, "move changes only order not farm data")
         check(!multiSource.moveFarm(thirdIdentity, to: foreign.identity!), "cross-source drop refused")
+        let beforeVersion = manager.catalog
+        let knownFarm = manager.farms.first { $0.registered == true && $0.automaticReference != nil }!
+        let knownIdentity = knownFarm.identity!
+        let previousReference = knownFarm.automaticReference!
+        let futureReference = SaveReference(gameTime: previousReference.gameTime, savedTicks: previousReference.savedTicks + 10_000_000,
+            nextBoundary: previousReference.nextBoundary, seasonIndex: previousReference.seasonIndex,
+            sourceName: previousReference.sourceName, saveVersion: 348)
+        let unconfirmedScan = CatalogScanResult(readings: [
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: knownIdentity.slotIndex, creationTime: knownIdentity.creationTime, name: "Unsafe rename"), reference: futureReference, message: ""),
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: 99, creationTime: ticks, name: "Unsafe new farm"), reference: futureReference, message: "")
+        ], message: "", refreshedBookmark: nil, metadataVersion: 348)
+        manager.catalog.apply(unconfirmedScan, sourceID: source)
+        check(manager.farms.map(\.identity) == beforeVersion.farms.map(\.identity), "unconfirmed scan keeps persistent identities and order")
+        check(manager.farms.first { $0.identity == knownIdentity }?.name == knownFarm.name, "unconfirmed scan preserves names")
+        check(manager.catalogVersionNotice?.contains("348") == true, "central notice includes real version and deferred changes")
+        let versionReload = FarmManager(defaults: defaults)
+        let versionFarm = versionReload.farms.first { $0.identity == knownIdentity }!
+        check(versionFarm.automaticReference?.version == 348 && FarmSyncState.forFarm(versionFarm) == .unconfirmedVersion, "manager persistence retains reference provenance and warning after restart")
+        check(versionReload.catalogVersionNotice == manager.catalogVersionNotice, "catalog notice survives restart")
+        manager.catalog.apply(CatalogScanResult(readings: nil, message: "invalid future metadata", refreshedBookmark: nil,
+            metadataVersion: 349, metadataRejected: true), sourceID: source)
+        check(manager.farms.first { $0.identity == knownIdentity }?.registered == true, "failed future scan never marks registered farm removed")
+        check(manager.farms.first { $0.identity == knownIdentity }?.automaticReference == futureReference, "failed future scan never overwrites valid reference")
+        let failureReload = FarmManager(defaults: defaults)
+        let failureFarm = failureReload.farms.first { $0.identity == knownIdentity }!
+        check(FarmSyncState.forFarm(failureFarm) == .lastStandNewVersion && failureReload.catalogVersionNotice?.contains("349") == true, "failure warning and source metadata persist")
+        manager.catalog.apply(CatalogScanResult(readings: nil, message: "temporarily inaccessible", refreshedBookmark: nil), sourceID: source)
+        check(manager.farms.first { $0.identity == knownIdentity }?.compatibility?.metadataRejected == true, "access failure cannot erase previous compatibility warning")
+        manager.catalog.merge(beforeVersion.farms.filter { $0.registered == true }.map { farm in
+            FarmReading(metadata: FT2FarmMetadata(slotIndex: farm.identity!.slotIndex, creationTime: farm.identity!.creationTime, name: farm.name), reference: farm.automaticReference, message: "")
+        }, sourceID: source)
+        check(FarmSyncState.forFarm(manager.farms.first { $0.identity == knownIdentity }!) == .unconfirmedVersion,
+              "older compatible fallback cannot roll future reference back or turn green")
         print("Passed \(checks) manager checks")
     }
 }

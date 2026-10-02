@@ -83,7 +83,7 @@ struct FarmCardView: View {
             Text(statusText(status))
         } icon: {
             Image(systemName: statusIcon(status))
-                .foregroundStyle(status == .synchronized ? Color.green : Color.secondary)
+                .foregroundStyle(status == .synchronized ? Color.green : ([.unconfirmedVersion, .lastStandNewVersion, .waitingNewVersion].contains(status) ? Color.orange : Color.secondary))
         }
         .font(.caption)
         .foregroundStyle(.secondary)
@@ -94,6 +94,9 @@ struct FarmCardView: View {
         case .lastStand: return loc("Letzter Stand", "Last saved state")
         case .notFound: return loc("Farm nicht mehr gefunden", "Farm no longer found")
         case .waiting: return loc("Warte auf Spielstand", "Waiting for save")
+        case .unconfirmedVersion: return loc("Neue Spielstandversion erkannt", "New save version detected")
+        case .lastStandNewVersion: return loc("Letzter Stand – neue Spielstandversion", "Last saved state – new save version")
+        case .waitingNewVersion: return loc("Neue Spielstandversion nicht lesbar", "New save version cannot be read")
         }
     }
     private func statusIcon(_ status: FarmSyncState) -> String {
@@ -102,6 +105,7 @@ struct FarmCardView: View {
         case .lastStand: return "clock"
         case .waiting: return "hourglass"
         case .notFound: return "archivebox"
+        case .unconfirmedVersion, .lastStandNewVersion, .waitingNewVersion: return "exclamationmark.triangle.fill"
         }
     }
 }

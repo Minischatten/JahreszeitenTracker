@@ -41,6 +41,13 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let notice = manager.catalogVersionNotice {
+                Label(notice, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+            }
             if manager.visibleFarms.count > 1, navigation.detail(in: manager.visibleFarms) != nil {
                 HStack {
                     Button { navigation.back() } label: {
@@ -115,6 +122,12 @@ private struct FarmDetailView: View {
     var body: some View {
         VStack(spacing: 20) {
             FarmCardView(farm: farm, state: state, compact: false)
+            if let explanation = farm.versionExplanation(isGerman: isGermanSystem) {
+                Label(explanation, systemImage: "exclamationmark.triangle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if farm.isInactive {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(loc("Farm nicht mehr gefunden", "Farm no longer found"))

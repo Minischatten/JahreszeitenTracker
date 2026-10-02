@@ -96,7 +96,7 @@ Aktueller FT2-Build, Version 347:
 Die Normalisierung ist ein begrenzter struktureller Parser, keine Regex-Ersetzung
 und keine Auswertung von Text. Er erhält escaped Strings, prüft doppelte Schlüssel,
 Verschachtelung und Restdaten. JSONDecoder prüft anschließend die JSON-Syntax.
-Doppelte Slot-IDs, ungültige Identitäten oder unbekannte Metadatenversionen führen
+Doppelte Slot-IDs, ungültige Identitäten oder ältere unbekannte Metadatenversionen führen
 zur Ablehnung des gesamten Snapshots. Bei einem Fehler wird keine Farm als gelöscht
 interpretiert. Maximal 10.000 registrierte Farmen pro Metadatendokument.
 
@@ -134,7 +134,8 @@ ENABLE_USER_SELECTED_FILES=readonly. Betriebssystembedingte Zugriffserfassung
 wird von der App weder angefordert noch verändert.
 
 Maximal 16 MiB komprimiert, 64 MiB entpackt, 64 Verschachtelungen und vier Millionen
-Werte. Die Bereichsparsing-Regeln bleiben bestehen: Version 347, keine doppelten
+Werte. Die Bereichsparsing-Regeln bleiben bestehen: bestätigte Version 347 oder
+eine strukturell validierte neuere Probeversion, keine doppelten
 Objektfelder, gültige Zeiten, Saison 0...3, Restzeit >0 und <=1020, höchstens fünf
 Minuten zukünftiger Speicherzeitpunkt. Neuere Saves ersetzen die Referenz; ältere,
 gleichzeitige widersprüchliche oder kaputte Kandidaten nicht.
@@ -183,3 +184,42 @@ Suite, einschließlich Persistenz, Entfernung manueller Altzustände und unabhä
 Der macOS-Build prüft die App-Integration. Auswahl, Wiederaufnahme des Bookmarks
 und Sandbox-Zugriff müssen zusätzlich im normalen signierten Xcode-App-Lauf auf
 dem Mac geprüft werden. Ein unsigned Build bestätigt diese Zugriffswege nicht.
+
+## Versionsvertrauen
+
+`FT2VersionPolicy.confirmed` in TrackerCore.swift ist die zentrale Freigabeliste,
+aktuell `{347}`. Höhere Versionen werden defensiv mit denselben Struktur-, Typ-,
+Datums- und Saisonprüfungen gelesen. Ältere unbekannte Versionen bleiben abgelehnt.
+Neue Typbytes werden nicht geraten. Eine Versionsnummer wird nur gemeldet, wenn
+sie tatsächlich aus dem Dokument gelesen werden konnte; ein beschädigter Gzip-
+Stream kann daher ohne erkennbare Versionsnummer abgelehnt werden.
+
+SaveReference speichert die Herkunftsversion. Alte persistierte Referenzen ohne
+`saveVersion` stammen vom bisherigen strikt auf 347 beschränkten Parser und gelten
+als 347. FarmCompatibility und Quellen-MetadataNotice werden im bestehenden
+`ft2FarmCatalog_v2` mitgespeichert; ein Neustart macht unbestätigte Referenzen nicht
+bestätigt. Referenz-/Countdownrechnung und `min(remaining + 2, 1020)` bleiben gleich.
+
+Nur ein frischer, vollständiger Katalogscan einer bestätigten Version ist
+registrierungsautoritativ. Ein unbestätigter Katalog darf keine Farm deaktivieren,
+reaktivieren, umbenennen oder neu anlegen. Nur exakt passende, bereits registrierte
+Identitäten können Plot-Referenzen übernehmen. Neue Identitäten, auch bei wieder-
+verwendetem Slot, bleiben außerhalb der persistierten Farmverwaltung und erhalten
+keinen Countdown. Ein zentraler Hinweis erklärt die zurückgestellten Änderungen.
+
+Plot-Dateien werden weiterhin nach dem validierten eingebetteten Zeitpunkt gewählt.
+Ein erkannter neuer inkompatibler Kandidat wird zusätzlich als Warnbefund erfasst,
+auch wenn eine alte 347-Datei lesbar ist. Bei ungültigen Dateien ist ein Zeitstempel
+kein sicherer Alters-/Eigentumsnachweis: die Versionswarnung bleibt deshalb
+konservativ bestehen, solange dieser Kandidat vorliegt. Gleichzeitige Konflikte
+und Konflikte mit der persistierten Referenz übernehmen keine neuen Zeitwerte.
+Validierte Kandidaten vor creation_time bleiben ausgeschlossen.
+
+Die UI unterscheidet grün Synchronisiert, orange Neue Spielstandversion erkannt,
+und Letzter Stand – neue Spielstandversion bzw. Neue Spielstandversion nicht lesbar
+bei fehlender Referenz. Detailtexte zeigen die tatsächlich bekannten Nummern.
+Inaktive Farmen behalten Vorrang mit Farm nicht mehr gefunden.
+
+Eine spätere Ergänzung der Freigabeliste ändert das Versionsvertrauen zentral.
+Fehlerbefunde verschwinden nicht durch bloße Freigabe. Registrierungsänderungen
+werden erst nach einem neuen vollständigen validierten Scan übernommen.

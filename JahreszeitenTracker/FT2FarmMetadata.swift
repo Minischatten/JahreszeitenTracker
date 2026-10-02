@@ -25,22 +25,35 @@ nonisolated struct FT2FarmMetadata: Decodable, Equatable, Sendable {
 /// No evaluation of text; quoted strings are copied without substitution.
 nonisolated enum FT2MetadataParser {
     private struct Root: Decodable { let version: Int; let farms: [FT2FarmMetadata] }
+    struct Document: Sendable {
+        let version: Int
+        let farms: [FT2FarmMetadata]
+    }
     static func parse(_ input: Data, now: Date = Date()) throws -> [FT2FarmMetadata] {
+        try parseDocument(input, now: now).farms
+    }
+    static func parseDocument(_ input: Data, now: Date = Date()) throws -> Document {
         guard input.count <= FT2SaveParser.maximumCompressedSize else { throw FT2Error.invalid("Metadatengröße") }
         let decoded = Data(input.map { ($0 ^ 255) &+ 31 })
         var normalizer = Normalizer(bytes: Array(try FT2SaveParser.gunzip(decoded)))
         let document = try normalizer.document()
-        let root = try JSONDecoder().decode(Root.self, from: document)
-        guard root.version == 347, root.farms.count <= 10_000 else { throw FT2Error.invalid("Metadatenversion oder Farmanzahl") }
-        var slots = Set<Int>()
-        for farm in root.farms {
-            guard farm.slotIndex >= 0, farm.slotIndex <= Int(Int32.max), slots.insert(farm.slotIndex).inserted,
-                  farm.name.utf8.count <= 4096,
-                  try TrackerClock.date(ticks: farm.creationTime) <= now.addingTimeInterval(300) else {
-                throw FT2Error.invalid("Farmidentität oder doppelter Slot")
+        struct VersionHeader: Decodable { let version: Int }
+        let version = try? JSONDecoder().decode(VersionHeader.self, from: document).version
+        do {
+            let root = try JSONDecoder().decode(Root.self, from: document)
+            guard FT2VersionPolicy.mayRead(root.version), root.farms.count <= 10_000 else { throw FT2Error.invalid("Metadatenversion oder Farmanzahl") }
+            var slots = Set<Int>()
+            for farm in root.farms {
+                guard farm.slotIndex >= 0, farm.slotIndex <= Int(Int32.max), slots.insert(farm.slotIndex).inserted,
+                      farm.name.utf8.count <= 4096,
+                      try TrackerClock.date(ticks: farm.creationTime) <= now.addingTimeInterval(300) else {
+                    throw FT2Error.invalid("Farmidentität oder doppelter Slot")
+                }
             }
+            return Document(version: root.version, farms: root.farms)
+        } catch {
+            throw FT2VersionError(version: version, reason: error.localizedDescription)
         }
-        return root.farms
     }
 
     private struct Normalizer {

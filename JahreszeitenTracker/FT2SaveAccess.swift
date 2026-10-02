@@ -4,7 +4,9 @@ import Darwin
 nonisolated struct CatalogScanResult: Sendable {
     let readings: [FarmReading]?
     let message: String
-    let refreshedBookmark: Data?
+    var refreshedBookmark: Data?
+    var metadataVersion: Int? = nil
+    var metadataRejected = false
 }
 
 /// This boundary has no write operations. Descriptors are always O_RDONLY,
@@ -17,19 +19,32 @@ nonisolated enum FT2SaveAccess {
                                  relativeTo: nil, bookmarkDataIsStale: &stale)
             guard folder.startAccessingSecurityScopedResource() else { throw FT2Error.invalid("Ordner erneut auswählen") }
             defer { folder.stopAccessingSecurityScopedResource() }
-            let readings = try catalog(in: folder, now: now)
+            var result = try catalogSnapshot(in: folder, now: now)
             let replacement = stale ? try folder.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                                                                includingResourceValuesForKeys: nil, relativeTo: nil) : nil
-            return CatalogScanResult(readings: readings, message: "", refreshedBookmark: replacement)
+            result.refreshedBookmark = replacement
+            return result
         } catch {
-            return CatalogScanResult(readings: nil, message: error.localizedDescription, refreshedBookmark: nil)
+            return failedScan(error)
         }
     }
 
+    static func failedScan(_ error: Error) -> CatalogScanResult {
+        var result = CatalogScanResult(readings: nil, message: error.localizedDescription, refreshedBookmark: nil)
+        result.metadataVersion = (error as? FT2VersionError)?.version
+        result.metadataRejected = result.metadataVersion.map { $0 > 347 } ?? false
+        return result
+    }
+
     static func catalog(in root: URL, now: Date) throws -> [FarmReading] {
+        try catalogSnapshot(in: root, now: now).readings ?? []
+    }
+
+    static func catalogSnapshot(in root: URL, now: Date) throws -> CatalogScanResult {
         let metadataURL = root.appendingPathComponent("farms.mlk")
         let snapshot = try readOnlySnapshot(metadataURL)
-        let metadata = try FT2MetadataParser.parse(snapshot, now: now)
+        let document = try FT2MetadataParser.parseDocument(snapshot, now: now)
+        let metadata = document.farms
         let areas = root.appendingPathComponent("farms", isDirectory: true)
         // Refuse a redirected area directory as well as final-file symlinks.
         let attributes = try? areas.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
@@ -37,36 +52,67 @@ nonisolated enum FT2SaveAccess {
         let readings = metadata.map { farm -> FarmReading in
             do {
                 guard safeDirectory else { throw FT2Error.invalid("Bereichsordner fehlt oder ist verknüpft") }
-                let reference = try newest(in: areas, slot: farm.slotIndex, now: now, createdAt: farm.creationTime)
-                return FarmReading(metadata: farm, reference: reference,
-                                   message: reference == nil ? "Kein gültiger Bereichsspielstand" : "")
+                let observation = try areaSnapshot(in: areas, slot: farm.slotIndex, now: now, createdAt: farm.creationTime)
+                return FarmReading(metadata: farm, reference: observation.reference,
+                                   message: observation.reference == nil ? "Kein gültiger Bereichsspielstand" : "",
+                                   rejectedVersions: observation.rejectedVersions,
+                                   observedPlotVersion: observation.observedVersion)
             } catch { return FarmReading(metadata: farm, reference: nil, message: error.localizedDescription) }
         }
         guard try readOnlySnapshot(metadataURL) == snapshot else { throw FT2Error.invalid("Metadaten während Scan verändert") }
-        return readings
+        return CatalogScanResult(readings: readings, message: "", refreshedBookmark: nil, metadataVersion: document.version)
     }
     /// Searches only the selected directory, only exact area-save filenames.
     /// No recursive traversal, .bak files, global saves, or modification-date ordering.
     static func newest(in folder: URL, slot: Int, now: Date, createdAt: Int64? = nil) throws -> SaveReference? {
+        let result = try areaSnapshot(in: folder, slot: slot, now: now, createdAt: createdAt)
+        guard !result.conflict else { throw FT2Error.invalid("widersprüchliche Bereichsdateien mit gleichem Zeitstempel") }
+        return result.reference
+    }
+
+    struct AreaObservation {
+        var reference: SaveReference?
+        var rejectedVersions: [Int] = []
+        var observedVersion: Int?
+        var conflict = false
+    }
+    static func areaSnapshot(in folder: URL, slot: Int, now: Date, createdAt: Int64? = nil) throws -> AreaObservation {
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
         let allowed = Set((0..<6).map { "farm_\(slot)_\($0).data" })
         var newest: SaveReference?
         var conflict = false
+        var rejectedVersions = Set<Int>()
+        var newestVersions = Set<Int>()
         for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where allowed.contains(file.lastPathComponent) {
-            guard let bytes = try? readOnlySnapshot(file),
-                  let reference = try? FT2SaveParser.parse(bytes, sourceName: file.lastPathComponent, now: now),
-                  createdAt.map({ reference.savedTicks >= $0 }) ?? true else { continue }
+            guard let bytes = try? readOnlySnapshot(file) else { continue }
+            let reference: SaveReference
+            do {
+                reference = try FT2SaveParser.parse(bytes, sourceName: file.lastPathComponent, now: now)
+            } catch {
+                // A malformed file cannot prove its age or ownership. Retain a
+                // conservative warning when a newer format was actually read.
+                if let version = (error as? FT2VersionError)?.version, version > 347 {
+                    rejectedVersions.insert(version)
+                }
+                continue
+            }
+            guard createdAt.map({ reference.savedTicks >= $0 }) ?? true else { continue }
             if newest == nil || reference.savedTicks > newest!.savedTicks {
-                newest = reference; conflict = false
+                newest = reference; conflict = false; newestVersions = [reference.version]
             } else if reference.savedTicks == newest!.savedTicks {
+                newestVersions.insert(reference.version)
                 let previous = newest!
                 if reference.gameTime != previous.gameTime || reference.nextBoundary != previous.nextBoundary || reference.seasonIndex != previous.seasonIndex {
                     conflict = true
+                } else if reference.version > previous.version {
+                    newest = reference
                 }
             }
         }
-        guard !conflict else { throw FT2Error.invalid("widersprüchliche Bereichsdateien mit gleichem Zeitstempel") }
-        return newest
+        if conflict { rejectedVersions.formUnion(newestVersions.filter { $0 > 347 }) }
+        return AreaObservation(reference: conflict ? nil : newest,
+                               rejectedVersions: rejectedVersions.sorted(),
+                               observedVersion: newestVersions.max(), conflict: conflict)
     }
 
     static func readOnlySnapshot(_ url: URL) throws -> Data {

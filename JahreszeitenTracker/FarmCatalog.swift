@@ -21,8 +21,30 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
     var registered: Bool?
     var referenceVerified: Bool?
     var status: String?
+    var compatibility: FarmCompatibility?
 
     var isInactive: Bool { registered == false }
+
+    func versionExplanation(isGerman: Bool) -> String? {
+        let state = FarmSyncState.forFarm(self)
+        guard [.unconfirmedVersion, .lastStandNewVersion, .waitingNewVersion].contains(state) else { return nil }
+        let versions = Array(Set((compatibility?.unconfirmedVersions ?? [])
+            + (compatibility?.rejectedVersions ?? [])
+            + (compatibility?.metadataRejected == true ? [compatibility?.metadataVersion].compactMap { $0 } : [])
+            + (automaticReference.map { FT2VersionPolicy.isConfirmed($0.version) ? [] : [$0.version] } ?? []))).sorted()
+        let numbers = versions.map(String.init).joined(separator: ", ")
+        if compatibility?.hasRejectedVersion == true {
+            let continuation = automaticReference == nil
+                ? (isGerman ? "Es liegt noch kein gültiger Spielstand für einen Countdown vor." : "There is no valid save for a countdown yet.")
+                : (isGerman ? "Der Countdown verwendet den zuletzt gültigen Spielstand." : "The countdown uses the last valid save.")
+            return (isGerman ? "Farm Together 2 verwendet Spielstandversion \(numbers). Die benötigten Daten konnten nicht sicher gelesen werden. "
+                             : "Farm Together 2 uses save version \(numbers). The required data could not be read safely. ") + continuation
+        }
+        let continuation = automaticReference == nil
+            ? (isGerman ? " Es liegt noch kein gültiger Spielstand für einen Countdown vor." : " There is no valid save for a countdown yet.") : ""
+        return (isGerman ? "Farm Together 2 verwendet Spielstandversion \(numbers). Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt."
+                         : "Farm Together 2 uses save version \(numbers). JahreszeitenTracker could read the required data, but this version has not yet been confirmed.") + continuation
+    }
 
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -34,12 +56,15 @@ nonisolated struct TrackerSource: Codable, Equatable, Sendable {
     let id: UUID
     var path: String
     var bookmark: Data
+    var metadataNotice: MetadataNotice? = nil
 }
 
 nonisolated struct FarmReading: Sendable {
     let metadata: FT2FarmMetadata
     let reference: SaveReference?
     let message: String
+    var rejectedVersions: [Int] = []
+    var observedPlotVersion: Int? = nil
 }
 
 nonisolated struct FarmCatalog: Codable, Sendable {
@@ -133,27 +158,73 @@ nonisolated struct FarmCatalog: Codable, Sendable {
         for i in farms.indices { farms[i].available = false; farms[i].referenceVerified = false }
     }
 
-    mutating func merge(_ readings: [FarmReading], sourceID: UUID) {
+    /// Parse failure never acts as an empty authoritative registry.
+    mutating func apply(_ result: CatalogScanResult, sourceID: UUID, confirmedVersions: Set<Int> = FT2VersionPolicy.confirmed) {
+        guard let readings = result.readings else {
+            for i in farms.indices where farms[i].identity?.sourceID == sourceID {
+                farms[i].available = false
+                if result.metadataRejected, let version = result.metadataVersion {
+                    var compatibility = farms[i].compatibility ?? FarmCompatibility()
+                    compatibility.metadataVersion = version
+                    compatibility.metadataRejected = true
+                    farms[i].compatibility = compatibility
+                }
+            }
+            if result.metadataRejected, let version = result.metadataVersion,
+               let index = sources.firstIndex(where: { $0.id == sourceID }) {
+                sources[index].metadataNotice = MetadataNotice(version: version, rejected: true, deferredFarms: 0)
+            }
+            return
+        }
+        merge(readings, sourceID: sourceID, metadataVersion: result.metadataVersion ?? 347, confirmedVersions: confirmedVersions)
+    }
+
+    mutating func merge(_ readings: [FarmReading], sourceID: UUID, metadataVersion: Int = 347, confirmedVersions: Set<Int> = FT2VersionPolicy.confirmed) {
+        let authoritative = confirmedVersions.contains(metadataVersion)
+        if let index = sources.firstIndex(where: { $0.id == sourceID }) {
+            let deferred = authoritative ? 0 : readings.filter { reading in
+                let identity = FarmIdentity(sourceID: sourceID, slotIndex: reading.metadata.slotIndex,
+                                            creationTime: reading.metadata.creationTime)
+                return !farms.contains { $0.identity == identity && $0.registered == true }
+            }.count
+            sources[index].metadataNotice = authoritative ? nil : MetadataNotice(version: metadataVersion, rejected: false, deferredFarms: deferred)
+        }
         for i in farms.indices where farms[i].identity?.sourceID == sourceID {
             farms[i].available = false
-            farms[i].registered = false
+            if authoritative { farms[i].registered = false }
             farms[i].referenceVerified = false
-            farms[i].status = "FT2: nicht registriert; letzte Referenz bleibt erhalten"
+            if authoritative {
+                farms[i].compatibility = FarmCompatibility(metadataVersion: metadataVersion)
+            } else {
+                // Absence from a non-authoritative registry does not constitute
+                // a fresh plot check and must not erase an earlier plot warning.
+                var compatibility = farms[i].compatibility ?? FarmCompatibility()
+                compatibility.metadataVersion = metadataVersion
+                compatibility.metadataRejected = false
+                farms[i].compatibility = compatibility
+            }
+            farms[i].status = authoritative ? "FT2: nicht registriert; letzte Referenz bleibt erhalten" : "FT2: unbestätigter Katalog; Registrierung unverändert"
         }
         for reading in readings {
             let identity = FarmIdentity(sourceID: sourceID, slotIndex: reading.metadata.slotIndex,
                                         creationTime: reading.metadata.creationTime)
             let index: Int
-            if let existing = farms.firstIndex(where: { $0.identity == identity }) { index = existing }
-            else {
+            if let existing = farms.firstIndex(where: { $0.identity == identity }) {
+                guard authoritative || farms[existing].registered == true else { continue }
+                index = existing
+            } else {
+                guard authoritative else { continue }
                 let id = (farms.map(\.id).max() ?? -1) + 1
                 farms.append(FarmData(id: id, name: reading.metadata.name, identity: identity))
                 index = farms.count - 1
             }
-            farms[index].name = reading.metadata.name
+            if authoritative { farms[index].name = reading.metadata.name }
             farms[index].available = true
             farms[index].registered = true
             farms[index].referenceVerified = false
+            farms[index].compatibility = FarmCompatibility(metadataVersion: metadataVersion,
+                observedPlotVersion: reading.observedPlotVersion ?? reading.reference?.version,
+                rejectedVersions: reading.rejectedVersions)
             guard let reference = reading.reference else {
                 farms[index].status = "FT2: \(reading.message); letzte Referenz bleibt erhalten"
                 continue
@@ -165,7 +236,13 @@ nonisolated struct FarmCatalog: Codable, Sendable {
             }
             switch ReferenceUpdate.decision(candidate: reference, previous: farms[index].automaticReference) {
             case .older: farms[index].status = "FT2: älterer Save ignoriert"
-            case .conflict: farms[index].status = "FT2: widersprüchlicher Save ignoriert"
+            case .conflict:
+                if reference.version > 347 {
+                    var compatibility = farms[index].compatibility ?? FarmCompatibility()
+                    compatibility.rejectedVersions = Array(Set(compatibility.rejectedVersions + [reference.version])).sorted()
+                    farms[index].compatibility = compatibility
+                }
+                farms[index].status = "FT2: widersprüchlicher Save ignoriert"
             case .unchanged:
                 farms[index].referenceVerified = true
                 farms[index].status = "FT2: Referenz unverändert"
@@ -190,9 +267,16 @@ nonisolated struct FarmNavigation {
 }
 
 nonisolated enum FarmSyncState {
-    case synchronized, lastStand, waiting, notFound
-    static func forFarm(_ farm: FarmData) -> FarmSyncState {
+    case synchronized, lastStand, waiting, notFound, unconfirmedVersion, lastStandNewVersion, waitingNewVersion
+    static func forFarm(_ farm: FarmData, confirmedVersions: Set<Int> = FT2VersionPolicy.confirmed) -> FarmSyncState {
         if farm.isInactive { return .notFound }
+        if farm.compatibility?.hasRejectedVersion == true {
+            return farm.automaticReference == nil ? .waitingNewVersion : .lastStandNewVersion
+        }
+        let referenceUnconfirmed = farm.automaticReference.map { !confirmedVersions.contains($0.version) } ?? false
+        if referenceUnconfirmed || !(farm.compatibility?.versionsUnconfirmed(by: confirmedVersions).isEmpty ?? true) {
+            return .unconfirmedVersion
+        }
         guard farm.automaticReference != nil else { return .waiting }
         return farm.available == true && farm.referenceVerified == true ? .synchronized : .lastStand
     }

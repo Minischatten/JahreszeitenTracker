@@ -31,6 +31,11 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section(loc("Spielstandzugriff", "Save access")) {
+                if let notice = manager.catalogVersionNotice {
+                    Label(notice, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Text(manager.settingsStatus)
                     .font(.callout)
                 if manager.saveFolderAvailable {

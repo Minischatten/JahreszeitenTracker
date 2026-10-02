@@ -9,11 +9,16 @@ nonisolated enum FT2SaveParser {
 
     static func parse(_ compressed: Data, sourceName: String, now: Date = Date()) throws -> SaveReference {
         var reader = Reader(bytes: Array(try gunzip(compressed)))
-        let fields = try reader.root()
-        guard let g = fields[15], let t = fields[16], let b = fields[18], let s = fields[21],
-              (0..<4).contains(s) else { throw FT2Error.invalid("fehlende Synchronisationsfelder") }
-        return try SaveReference(gameTime: g, savedTicks: t, nextBoundary: b,
-                                 seasonIndex: Int(s), sourceName: sourceName).validated(now: now)
+        do {
+            let fields = try reader.root()
+            guard let g = fields[15], let t = fields[16], let b = fields[18], let s = fields[21],
+                  (0..<4).contains(s) else { throw FT2Error.invalid("fehlende Synchronisationsfelder") }
+            return try SaveReference(gameTime: g, savedTicks: t, nextBoundary: b,
+                                     seasonIndex: Int(s), sourceName: sourceName,
+                                     saveVersion: reader.observedVersion).validated(now: now)
+        } catch {
+            throw FT2VersionError(version: reader.observedVersion, reason: error.localizedDescription)
+        }
     }
 
     static func gunzip(_ input: Data) throws -> Data {
@@ -51,6 +56,7 @@ nonisolated enum FT2SaveParser {
         let bytes: [UInt8]
         var position = 0
         var nodes = 0
+        var observedVersion: Int?
         mutating func byte() throws -> UInt8 {
             guard position < bytes.count else { throw FT2Error.invalid("unerwartetes Dateiende") }
             defer { position += 1 }; return bytes[position]
@@ -64,19 +70,22 @@ nonisolated enum FT2SaveParser {
             guard try byte() == 0xc1 else { throw FT2Error.invalid("Wurzelobjekt") }
             var values: [Int64: Int64] = [:]
             var keys = Set<Int64>()
+            var invalidScalarType = false
             while try peek() != 0xc8 {
                 guard let key = try value(depth: 1), keys.insert(key).inserted else {
                     throw FT2Error.invalid("Feldkennung oder doppeltes Feld")
                 }
                 let v = try value(depth: 1)
+                if key == 0, let v, let version = Int(exactly: v) { observedVersion = version }
                 if [0, 15, 16, 18, 21].contains(key) {
-                    guard let v else { throw FT2Error.invalid("Feldtyp") }; values[key] = v
+                    if let v { values[key] = v } else { invalidScalarType = true }
                 }
             }
             _ = try byte()
-            guard position == bytes.count, values[0] == 347 else {
+            guard position == bytes.count, let version = observedVersion, FT2VersionPolicy.mayRead(version) else {
                 throw FT2Error.invalid("unbekannte Formatversion oder Restdaten")
             }
+            guard !invalidScalarType else { throw FT2Error.invalid("Feldtyp") }
             return values
         }
         func peek() throws -> UInt8 {
