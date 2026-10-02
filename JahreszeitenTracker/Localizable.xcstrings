@@ -1,0 +1,873 @@
+{
+  "sourceLanguage": "de",
+  "strings": {
+    "Abbrechen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Alle Farmen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Farmen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All Farms"
+          }
+        }
+      }
+    },
+    "Als Nächstes": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Als Nächstes"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up Next"
+          }
+        }
+      }
+    },
+    "Der Countdown funktioniert auch weiter, wenn der Spielstandordner vorübergehend nicht verfügbar ist. Dafür verwendet der JahreszeitenTracker den zuletzt gelesenen Spielstand.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der Countdown funktioniert auch weiter, wenn der Spielstandordner vorübergehend nicht verfügbar ist. Dafür verwendet der JahreszeitenTracker den zuletzt gelesenen Spielstand."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The countdown continues if the save folder is temporarily unavailable, using the last save read by JahreszeitenTracker."
+          }
+        }
+      }
+    },
+    "Der JahreszeitenTracker liest neue Spielstände automatisch ein.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Der JahreszeitenTracker liest neue Spielstände automatisch ein."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JahreszeitenTracker automatically reads new saves."
+          }
+        }
+      }
+    },
+    "Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All data for this farm will be permanently removed from JahreszeitenTracker. This cannot be undone.\n\nYour Farm Together 2 saves will not be modified."
+          }
+        }
+      }
+    },
+    "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Der JahreszeitenTracker verwendet deshalb den zuletzt bekannten Spielstand. Der Countdown läuft auf dieser Grundlage weiter.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Der JahreszeitenTracker verwendet deshalb den zuletzt bekannten Spielstand. Der Countdown läuft auf dieser Grundlage weiter."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This farm is no longer listed in your Farm Together 2 saves. JahreszeitenTracker continues the countdown using its last known save."
+          }
+        }
+      }
+    },
+    "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Es liegt kein gültiger Spielstand für einen Countdown vor.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Es liegt kein gültiger Spielstand für einen Countdown vor."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This farm is no longer listed in your Farm Together 2 saves. No valid save is available for a countdown."
+          }
+        }
+      }
+    },
+    "Einstellungen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einstellungen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        }
+      }
+    },
+    "Endgültig löschen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endgültig löschen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete Permanently"
+          }
+        }
+      }
+    },
+    "FT2-Farm": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FT2-Farm"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FT2 Farm"
+          }
+        }
+      }
+    },
+    "Farm Together 2 Spielstände": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 Spielstände"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 Saves"
+          }
+        }
+      }
+    },
+    "Farm Together 2 verwendet Spielstandversion %@. Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 verwendet Spielstandversion %@. Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 uses save version %@. JahreszeitenTracker could read the required data, but this version has not yet been verified."
+          }
+        }
+      }
+    },
+    "Farm Together 2 verwendet Spielstandversion %@. Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt. Es liegt noch kein gültiger Spielstand für einen Countdown vor.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 verwendet Spielstandversion %@. Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt. Es liegt noch kein gültiger Spielstand für einen Countdown vor."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 uses save version %@. JahreszeitenTracker could read the required data, but this version has not yet been verified. No valid save is available for a countdown."
+          }
+        }
+      }
+    },
+    "Farm Together 2 verwendet Spielstandversion %@. Die benötigten Daten konnten nicht sicher gelesen werden. Der Countdown verwendet den zuletzt gültigen Spielstand.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 verwendet Spielstandversion %@. Die benötigten Daten konnten nicht sicher gelesen werden. Der Countdown verwendet den zuletzt gültigen Spielstand."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 uses save version %@. The required data could not be read safely. The countdown uses the last valid save."
+          }
+        }
+      }
+    },
+    "Farm Together 2 verwendet Spielstandversion %@. Die benötigten Daten konnten nicht sicher gelesen werden. Es liegt noch kein gültiger Spielstand für einen Countdown vor.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 verwendet Spielstandversion %@. Die benötigten Daten konnten nicht sicher gelesen werden. Es liegt noch kein gültiger Spielstand für einen Countdown vor."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Together 2 uses save version %@. The required data could not be read safely. No valid save is available for a countdown."
+          }
+        }
+      }
+    },
+    "Farm endgültig löschen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm endgültig löschen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanently Delete Farm"
+          }
+        }
+      }
+    },
+    "Farm nicht mehr gefunden": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm nicht mehr gefunden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm No Longer Found"
+          }
+        }
+      }
+    },
+    "Farm öffnen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm öffnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open farm"
+          }
+        }
+      }
+    },
+    "Frühling": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühling"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spring"
+          }
+        }
+      }
+    },
+    "Herbst": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herbst"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autumn"
+          }
+        }
+      }
+    },
+    "Kein Spielstandordner ausgewählt": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Spielstandordner ausgewählt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No save folder selected"
+          }
+        }
+      }
+    },
+    "Keine Hauptfarm": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Hauptfarm"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Farms Found"
+          }
+        }
+      }
+    },
+    "Lesenden Zugriff erlauben": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesenden Zugriff erlauben"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow Read Access"
+          }
+        }
+      }
+    },
+    "Letzter Stand": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzter Stand"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Saved State"
+          }
+        }
+      }
+    },
+    "Letzter Stand – neue Spielstandversion": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letzter Stand – neue Spielstandversion"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Saved State – New Save Version"
+          }
+        }
+      }
+    },
+    "Neue Spielstandversion erkannt": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Spielstandversion erkannt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New Save Version Detected"
+          }
+        }
+      }
+    },
+    "Neue Spielstandversion nicht lesbar": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Neue Spielstandversion nicht lesbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unsupported Save Version"
+          }
+        }
+      }
+    },
+    "Normalerweise unter macOS: %@": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normalerweise unter macOS: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Typical location on macOS: %@"
+          }
+        }
+      }
+    },
+    "Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your farms will appear here once a valid save is available."
+          }
+        }
+      }
+    },
+    "Sommer": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommer"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summer"
+          }
+        }
+      }
+    },
+    "Spielstandordner auswählen …": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandordner auswählen …"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Save Folder…"
+          }
+        }
+      }
+    },
+    "Spielstandordner derzeit nicht verfügbar": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandordner derzeit nicht verfügbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save folder currently unavailable"
+          }
+        }
+      }
+    },
+    "Spielstandordner verfügbar": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandordner verfügbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save folder available"
+          }
+        }
+      }
+    },
+    "Spielstandversion %@ ist noch nicht bestätigt. Neue Farmen, Umbenennungen und Registrierungsänderungen werden erst nach Bestätigung übernommen.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandversion %@ ist noch nicht bestätigt. Neue Farmen, Umbenennungen und Registrierungsänderungen werden erst nach Bestätigung übernommen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save version %@ has not yet been verified. New farms, name changes and changes to the farm list will only be applied once this version is verified."
+          }
+        }
+      }
+    },
+    "Spielstandversion %@ konnte nicht sicher gelesen werden. Vorhandene Farmen und Referenzen bleiben erhalten.": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandversion %@ konnte nicht sicher gelesen werden. Vorhandene Farmen und Referenzen bleiben erhalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save version %@ could not be read safely. Existing farms and their last saved states are retained."
+          }
+        }
+      }
+    },
+    "Spielstandzugriff": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstandzugriff"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save Access"
+          }
+        }
+      }
+    },
+    "Spielstände werden ausschließlich gelesen und niemals verändert.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielstände werden ausschließlich gelesen und niemals verändert."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saves are read only and are never modified."
+          }
+        }
+      }
+    },
+    "Synchronisiert": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced"
+          }
+        }
+      }
+    },
+    "Warte auf Spielstand": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warte auf Spielstand"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for Save"
+          }
+        }
+      }
+    },
+    "Winter": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winter"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winter"
+          }
+        }
+      }
+    },
+    "Wähle deinen FT2-Spielstandordner in den Einstellungen.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle deinen FT2-Spielstandordner in den Einstellungen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your Farm Together 2 save folder in Settings."
+          }
+        }
+      }
+    },
+    "Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Der JahreszeitenTracker erkennt deine Hauptfarmen darin automatisch.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Der JahreszeitenTracker erkennt deine Hauptfarmen darin automatisch."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the folder where Farm Together 2 stores your saves. JahreszeitenTracker detects your farms automatically."
+          }
+        }
+      }
+    },
+    "Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Spielstände werden ausschließlich gelesen.": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Spielstände werden ausschließlich gelesen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the folder where Farm Together 2 stores your saves. Saves will only be read."
+          }
+        }
+      }
+    },
+    "Zeit bis zum Saisonwechsel": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeit bis zum Saisonwechsel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time until the next season"
+          }
+        }
+      }
+    },
+    "Zugriff entfernen": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zugriff entfernen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove Access"
+          }
+        }
+      }
+    },
+    "bis zum Jahreszeitenwechsel": {
+      "comment": "User interface text.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bis zum Jahreszeitenwechsel"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "until the season changes"
+          }
+        }
+      }
+    },
+    "„%@“ endgültig löschen?": {
+      "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "„%@“ endgültig löschen?"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanently delete “%@”?"
+          }
+        }
+      }
+    },
+    "JahreszeitenTracker": {
+      "shouldTranslate": false
+    }
+  },
+  "version": "1.0"
+}

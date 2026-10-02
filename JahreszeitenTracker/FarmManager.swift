@@ -44,20 +44,18 @@ final class FarmManager: ObservableObject {
         }
     }
     var settingsStatus: String {
-        if !hasSaveFolder { return loc("Kein Spielstandordner ausgewählt", "No save folder selected") }
-        return saveFolderAvailable ? loc("Spielstandordner verfügbar", "Save folder available")
-            : loc("Spielstandordner derzeit nicht verfügbar", "Save folder currently unavailable")
+        if !hasSaveFolder { return String(localized: "Kein Spielstandordner ausgewählt") }
+        return saveFolderAvailable ? String(localized: "Spielstandordner verfügbar")
+            : String(localized: "Spielstandordner derzeit nicht verfügbar")
     }
     var catalogVersionNotice: String? {
         guard let source = catalog.sources.first(where: { $0.id == (catalog.activeSourceID ?? catalog.displaySourceID) }),
               let notice = source.metadataNotice else { return nil }
         if notice.rejected {
-            return loc("Spielstandversion \(notice.version) konnte nicht sicher gelesen werden. Vorhandene Farmen und Referenzen bleiben erhalten.",
-                       "Save version \(notice.version) could not be read safely. Existing farms and references are retained.")
+            return String(localized: "Spielstandversion \(String(notice.version)) konnte nicht sicher gelesen werden. Vorhandene Farmen und Referenzen bleiben erhalten.")
         }
         guard !FT2VersionPolicy.isConfirmed(notice.version) else { return nil }
-        return loc("Spielstandversion \(notice.version) ist noch nicht bestätigt. Neue Farmen, Umbenennungen und Registrierungsänderungen werden erst nach Bestätigung übernommen.",
-                   "Save version \(notice.version) is not yet confirmed. New farms, names and registration changes require confirmation.")
+        return String(localized: "Spielstandversion \(String(notice.version)) ist noch nicht bestätigt. Neue Farmen, Umbenennungen und Registrierungsänderungen werden erst nach Bestätigung übernommen.")
     }
     var sourcePath: String? { catalog.sources.first(where: { $0.id == catalog.activeSourceID })?.path }
     func state(for farm: FarmData, at date: Date) -> SeasonState? {
@@ -70,16 +68,15 @@ final class FarmManager: ObservableObject {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
         panel.allowsMultipleSelection = false
-        panel.prompt = loc("Lesenden Zugriff erlauben", "Allow read access")
-        panel.message = loc("Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Spielstände werden ausschließlich gelesen.",
-                            "Select the folder where Farm Together 2 stores your saves. Saves are read only.")
+        panel.prompt = String(localized: "Lesenden Zugriff erlauben")
+        panel.message = String(localized: "Wähle den Ordner aus, in dem Farm Together 2 deine Spielstände ablegt. Spielstände werden ausschließlich gelesen.")
         guard panel.runModal() == .OK, let folder = panel.url else { return }
         do {
             let bookmark = try folder.bookmarkData(options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
                                                     includingResourceValuesForKeys: nil, relativeTo: nil)
             saveFolderAvailable = false
             catalog.selectSource(path: folder.standardizedFileURL.path, bookmark: bookmark)
-            sourceStatus = loc("FT2: Ordner ausgewählt; Prüfung läuft", "FT2: folder selected; checking")
+            sourceStatus = "FT2: Ordner ausgewählt; Prüfung läuft"
             Task { await scanSources() }
         } catch { sourceStatus = error.localizedDescription }
     }
@@ -88,7 +85,7 @@ final class FarmManager: ObservableObject {
         saveFolderAvailable = false
         catalog.activeSourceID = nil
         for i in catalog.farms.indices { catalog.farms[i].available = false }
-        sourceStatus = loc("FT2 getrennt; Referenzen bleiben erhalten", "FT2 disconnected; references retained")
+        sourceStatus = "FT2 getrennt; Referenzen bleiben erhalten"
     }
 
     @discardableResult
@@ -131,10 +128,10 @@ final class FarmManager: ObservableObject {
         }
         guard let readings = result.readings else {
             catalog.apply(result, sourceID: sourceID)
-            sourceStatus = loc("FT2: Referenzen bleiben erhalten — ", "FT2: references retained — ") + result.message
+            sourceStatus = "FT2: Referenzen bleiben erhalten — " + result.message
             return
         }
-        sourceStatus = readings.isEmpty ? loc("FT2: keine Hauptfarm registriert", "FT2: no main farm registered") : ""
+        sourceStatus = readings.isEmpty ? "FT2: keine Hauptfarm registriert" : ""
         catalog.apply(result, sourceID: sourceID)
         if !visibleFarms.contains(where: { $0.identity == catalog.selectedFarmIdentity }) {
             catalog.selectedFarmIdentity = visibleFarms.first?.identity

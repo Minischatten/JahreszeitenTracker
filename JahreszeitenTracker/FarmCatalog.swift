@@ -25,7 +25,7 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
 
     var isInactive: Bool { registered == false }
 
-    func versionExplanation(isGerman: Bool) -> String? {
+    func versionExplanation() -> String? {
         let state = FarmSyncState.forFarm(self)
         guard [.unconfirmedVersion, .lastStandNewVersion, .waitingNewVersion].contains(state) else { return nil }
         let versions = Array(Set((compatibility?.unconfirmedVersions ?? [])
@@ -34,21 +34,20 @@ nonisolated struct FarmData: Identifiable, Codable, Equatable, Sendable {
             + (automaticReference.map { FT2VersionPolicy.isConfirmed($0.version) ? [] : [$0.version] } ?? []))).sorted()
         let numbers = versions.map(String.init).joined(separator: ", ")
         if compatibility?.hasRejectedVersion == true {
-            let continuation = automaticReference == nil
-                ? (isGerman ? "Es liegt noch kein gültiger Spielstand für einen Countdown vor." : "There is no valid save for a countdown yet.")
-                : (isGerman ? "Der Countdown verwendet den zuletzt gültigen Spielstand." : "The countdown uses the last valid save.")
-            return (isGerman ? "Farm Together 2 verwendet Spielstandversion \(numbers). Die benötigten Daten konnten nicht sicher gelesen werden. "
-                             : "Farm Together 2 uses save version \(numbers). The required data could not be read safely. ") + continuation
+            if automaticReference == nil {
+                return String(localized: "Farm Together 2 verwendet Spielstandversion \(numbers). Die benötigten Daten konnten nicht sicher gelesen werden. Es liegt noch kein gültiger Spielstand für einen Countdown vor.")
+            }
+            return String(localized: "Farm Together 2 verwendet Spielstandversion \(numbers). Die benötigten Daten konnten nicht sicher gelesen werden. Der Countdown verwendet den zuletzt gültigen Spielstand.")
         }
-        let continuation = automaticReference == nil
-            ? (isGerman ? " Es liegt noch kein gültiger Spielstand für einen Countdown vor." : " There is no valid save for a countdown yet.") : ""
-        return (isGerman ? "Farm Together 2 verwendet Spielstandversion \(numbers). Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt."
-                         : "Farm Together 2 uses save version \(numbers). JahreszeitenTracker could read the required data, but this version has not yet been confirmed.") + continuation
+        if automaticReference == nil {
+            return String(localized: "Farm Together 2 verwendet Spielstandversion \(numbers). Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt. Es liegt noch kein gültiger Spielstand für einen Countdown vor.")
+        }
+        return String(localized: "Farm Together 2 verwendet Spielstandversion \(numbers). Der JahreszeitenTracker konnte die benötigten Daten weiterhin lesen, diese Version wurde jedoch noch nicht bestätigt.")
     }
 
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "FT2-Farm" : trimmed
+        return trimmed.isEmpty ? String(localized: "FT2-Farm") : trimmed
     }
 }
 

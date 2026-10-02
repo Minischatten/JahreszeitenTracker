@@ -86,9 +86,10 @@
 				};
 			};
 			buildConfigurationList = 2CC32929300D0B960026E403 /* Build configuration list for PBXProject "JahreszeitenTracker" */;
-			developmentRegion = en;
+			developmentRegion = de;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				de,
 				en,
 				Base,
 			);

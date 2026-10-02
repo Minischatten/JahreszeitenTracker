@@ -28,10 +28,10 @@ struct FarmCardView: View {
                         .font(.system(size: compact ? 38 : 56, weight: .semibold, design: .rounded))
                         .monospacedDigit()
                         .contentTransition(.numericText(countsDown: true))
-                        .accessibilityLabel(loc("Zeit bis zum Saisonwechsel", "Time until season change"))
+                        .accessibilityLabel(String(localized: "Zeit bis zum Saisonwechsel"))
                         .accessibilityValue(CountdownDisplay.text(remaining: state.remaining))
                     if !compact {
-                        Text(loc("bis zum Jahreszeitenwechsel", "until the season changes"))
+                        Text(String(localized: "bis zum Jahreszeitenwechsel"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -46,7 +46,7 @@ struct FarmCardView: View {
                             .frame(width: 48, height: 48)
                             .accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(loc("Als Nächstes", "Up next"))
+                            Text(String(localized: "Als Nächstes"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             Text(season.next.name()).font(.subheadline.weight(.medium))
@@ -60,7 +60,7 @@ struct FarmCardView: View {
                     .foregroundStyle(.tertiary)
                     .frame(height: compact ? 150 : 256)
                     .accessibilityHidden(true)
-                Text("—:—")
+                Text(verbatim: "—:—")
                     .font(.system(size: compact ? 38 : 56, weight: .semibold, design: .rounded))
                     .foregroundStyle(.secondary)
                 syncLabel
@@ -90,13 +90,13 @@ struct FarmCardView: View {
     }
     private func statusText(_ status: FarmSyncState) -> String {
         switch status {
-        case .synchronized: return loc("Synchronisiert", "Synced")
-        case .lastStand: return loc("Letzter Stand", "Last saved state")
-        case .notFound: return loc("Farm nicht mehr gefunden", "Farm no longer found")
-        case .waiting: return loc("Warte auf Spielstand", "Waiting for save")
-        case .unconfirmedVersion: return loc("Neue Spielstandversion erkannt", "New save version detected")
-        case .lastStandNewVersion: return loc("Letzter Stand – neue Spielstandversion", "Last saved state – new save version")
-        case .waitingNewVersion: return loc("Neue Spielstandversion nicht lesbar", "New save version cannot be read")
+        case .synchronized: return String(localized: "Synchronisiert")
+        case .lastStand: return String(localized: "Letzter Stand")
+        case .notFound: return String(localized: "Farm nicht mehr gefunden")
+        case .waiting: return String(localized: "Warte auf Spielstand")
+        case .unconfirmedVersion: return String(localized: "Neue Spielstandversion erkannt")
+        case .lastStandNewVersion: return String(localized: "Letzter Stand – neue Spielstandversion")
+        case .waitingNewVersion: return String(localized: "Neue Spielstandversion nicht lesbar")
         }
     }
     private func statusIcon(_ status: FarmSyncState) -> String {

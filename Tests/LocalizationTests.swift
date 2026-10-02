@@ -1,0 +1,124 @@
+import Foundation
+import SwiftUI
+import AppKit
+
+/// Compiled beside ContentView.swift by run-localization-tests.sh solely to
+/// exercise its file-private detail view without changing production visibility.
+@main
+@MainActor
+struct LocalizationTests {
+    static var checks = 0
+    static func check(_ condition: Bool, _ message: String) {
+        checks += 1
+        precondition(condition, message)
+    }
+    static func main() throws {
+        let arguments = CommandLine.arguments
+        let language = arguments[1]
+        let catalogURL = URL(fileURLWithPath: arguments[2])
+        let output = URL(fileURLWithPath: arguments[3], isDirectory: true)
+        let catalog = try JSONSerialization.jsonObject(with: Data(contentsOf: catalogURL)) as! [String: Any]
+        let entries = catalog["strings"] as! [String: [String: Any]]
+        check(Bundle.main.developmentLocalization == "de", "German development language in real resource bundle")
+        check(Set(Bundle.main.localizations).isSuperset(of: ["de", "en"]), "both compiled localizations present")
+        check(Bundle.main.preferredLocalizations.first == language, "Apple language selection, including unsupported-language fallback")
+        for (key, entry) in entries where entry["shouldTranslate"] as? Bool != false {
+            let localizations = entry["localizations"] as! [String: [String: Any]]
+            let unit = localizations[language]!["stringUnit"] as! [String: String]
+            let actual = Bundle.main.localizedString(forKey: key, value: "MISSING TRANSLATION", table: "Localizable")
+            check(actual == unit["value"], "compiled resource matches approved catalog: \(key)")
+            check(unit["state"] == "translated", "translation complete")
+            check(key.components(separatedBy: "%@").count == actual.components(separatedBy: "%@").count, "parameters retained")
+        }
+        check(String(localized: "Synchronisiert") == (language == "de" ? "Synchronisiert" : "Synced"), "native runtime lookup")
+        check(Season.spring.name() == (language == "de" ? "Frühling" : "Spring"), "season display follows native language")
+        check(Season.allCases.map(\.rawValue) == ["spring", "summer", "autumn", "winter"], "persisted seasons never localized")
+        check(String(localized: "Zeit bis zum Saisonwechsel") == (language == "de" ? "Zeit bis zum Saisonwechsel" : "Time until the next season"), "accessibility countdown label")
+        check(String(localized: "Farm öffnen") == (language == "de" ? "Farm öffnen" : "Open farm"), "accessibility card hint")
+        check(String(localized: "Einstellungen") == (language == "de" ? "Einstellungen" : "Settings"), "settings title and tooltip")
+        let farmName = "Meine Farm / Café 🌱 100% %@ 348"
+        let title = String(localized: "„\(farmName)“ endgültig löschen?")
+        check(title == (language == "de" ? "„\(farmName)“ endgültig löschen?" : "Permanently delete “\(farmName)”?"), "farm interpolation remains verbatim")
+        check(String(localized: "Abbrechen") == (language == "de" ? "Abbrechen" : "Cancel"), "custom cancel button")
+        let hint = "~/Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage/<Steam-ID>/"
+        check(String(localized: "Normalerweise unter macOS: \(hint)").contains(hint), "path never translated")
+        check(CountdownDisplay.text(remaining: 1020) == "17:00", "countdown unchanged")
+
+        let app = NSApplication.shared
+        app.setActivationPolicy(.prohibited)
+        app.appearance = NSAppearance(named: .aqua)
+        let suite = "FT2LocalizationTests." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let manager = FarmManager(defaults: defaults)
+        manager.catalog.selectSource(path: "/synthetic/read-only/Café", bookmark: Data([1]))
+        let source = manager.catalog.activeSourceID!
+        let now = Date()
+        let ticks = TrackerClock.ticksAtUnixEpoch + Int64(now.timeIntervalSince1970) * 10_000_000
+        let metadata = (0..<4).map { FT2FarmMetadata(slotIndex: $0 * 16, creationTime: ticks - 10_000_000,
+            name: $0 == 0 ? farmName + " – Eine besonders lange Hauptfarm mit unverändertem Namen" : "Farm \($0 + 1)") }
+        let references = (0..<4).map { SaveReference(gameTime: 100, savedTicks: ticks, nextBoundary: 500,
+            seasonIndex: $0, sourceName: "farm_\($0 * 16)_0.data", saveVersion: $0 == 1 ? 348 : 347) }
+        manager.catalog.merge((0..<4).map { FarmReading(metadata: metadata[$0], reference: references[$0], message: "",
+            rejectedVersions: $0 == 2 ? [349] : []) }, sourceID: source)
+        let persistedNames = manager.farms.map(\.name)
+        check(manager.farms[0].displayName == metadata[0].name, "farm name unaffected by language")
+        check(manager.farms[1].versionExplanation()?.contains("348") == true, "unconfirmed dynamic version")
+        check(manager.farms[2].versionExplanation()?.contains("349") == true, "rejected dynamic version")
+        if language == "en" {
+            check(manager.farms[1].versionExplanation() == "Farm Together 2 uses save version 348. JahreszeitenTracker could read the required data, but this version has not yet been verified.", "full English sentence interpolation")
+        }
+        var noReference = manager.farms[2]
+        noReference.automaticReference = nil
+        check(noReference.versionExplanation()?.contains(language == "de" ? "Es liegt noch kein gültiger Spielstand" : "No valid save is available") == true, "complete rejected-without-reference template")
+        noReference.compatibility = FarmCompatibility(metadataVersion: 348)
+        check(noReference.versionExplanation()?.contains(language == "de" ? "Es liegt noch kein gültiger Spielstand" : "No valid save is available") == true, "complete unconfirmed-without-reference template")
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        try render(ContentView().environmentObject(manager), size: NSSize(width: 640, height: 900), to: output.appendingPathComponent("\(language)-overview.png"))
+        try render(ContentView().environmentObject(manager), size: NSSize(width: 380, height: 900), to: output.appendingPathComponent("\(language)-narrow.png"))
+        try render(FarmDetailView(farm: manager.farms[2], state: manager.state(for: manager.farms[2], at: now), onDeleted: {}).environmentObject(manager), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-detail.png"))
+        manager.catalog.merge((0..<3).map { FarmReading(metadata: metadata[$0], reference: references[$0], message: "",
+            rejectedVersions: $0 == 2 ? [349] : []) }, sourceID: source)
+        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager), size: NSSize(width: 640, height: 1000), to: output.appendingPathComponent("\(language)-inactive.png"))
+        manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 348, rejected: false, deferredFarms: 1)
+        check(manager.catalogVersionNotice?.contains("348") == true, "catalog version parameter")
+        if language == "en" { check(manager.catalogVersionNotice?.hasPrefix("Save version 348 has not yet been verified.") == true, "English global version notice") }
+        try render(SettingsView().environmentObject(manager), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
+        try render(ContentView().environmentObject(manager), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
+        manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 349, rejected: true, deferredFarms: 0)
+        check(manager.catalogVersionNotice?.contains("349") == true, "rejected catalog parameter")
+        check(manager.farms.map(\.name) == persistedNames, "rendering never localizes stored names")
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = String(localized: "Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert.")
+        alert.addButton(withTitle: String(localized: "Abbrechen"))
+        alert.addButton(withTitle: String(localized: "Endgültig löschen"))
+        alert.layout()
+        alert.window.appearance = NSAppearance(named: .aqua)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        if let content = alert.window.contentView {
+            content.wantsLayer = true
+            content.layer?.backgroundColor = NSColor.white.cgColor
+            try snapshot(content, to: output.appendingPathComponent("\(language)-delete-dialog.png"))
+        }
+        print("Passed \(checks) bundled localization/UI checks (\(language)); resources: \(Bundle.main.resourcePath ?? "")")
+    }
+
+    static func render<V: View>(_ view: V, size: NSSize, to url: URL) throws {
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height).background(Color.white))
+        host.frame = NSRect(origin: .zero, size: size)
+        let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = host
+        window.appearance = NSAppearance(named: .aqua)
+        // Allow SwiftUI's layout/render transactions to finish in the isolated test host.
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        host.layoutSubtreeIfNeeded()
+        try snapshot(host, to: url)
+        window.contentView = nil
+    }
+    static func snapshot(_ view: NSView, to url: URL) throws {
+        let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds)!
+        view.cacheDisplay(in: view.bounds, to: bitmap)
+        try bitmap.representation(using: .png, properties: [:])!.write(to: url)
+    }
+}

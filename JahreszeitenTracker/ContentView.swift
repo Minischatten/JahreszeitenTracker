@@ -2,19 +2,13 @@ import SwiftUI
 import CoreTransferable
 import UniformTypeIdentifiers
 
-nonisolated var isGermanSystem: Bool {
-    let lang = Locale.preferredLanguages.first ?? Locale.current.identifier
-    return lang.hasPrefix("de")
-}
-nonisolated func loc(_ de: String, _ en: String) -> String { isGermanSystem ? de : en }
-
 extension Season {
-    func name(isGerman: Bool = isGermanSystem) -> String {
+    func name() -> String {
         switch self {
-        case .spring: return isGerman ? "Frühling" : "Spring"
-        case .summer: return isGerman ? "Sommer" : "Summer"
-        case .autumn: return isGerman ? "Herbst" : "Autumn"
-        case .winter: return isGerman ? "Winter" : "Winter"
+        case .spring: return String(localized: "Frühling")
+        case .summer: return String(localized: "Sommer")
+        case .autumn: return String(localized: "Herbst")
+        case .winter: return String(localized: "Winter")
         }
     }
     var next: Season {
@@ -51,7 +45,7 @@ struct ContentView: View {
             if manager.visibleFarms.count > 1, navigation.detail(in: manager.visibleFarms) != nil {
                 HStack {
                     Button { navigation.back() } label: {
-                        Label(loc("Alle Farmen", "All farms"), systemImage: "chevron.left")
+                        Label(String(localized: "Alle Farmen"), systemImage: "chevron.left")
                     }
                     Spacer()
                 }
@@ -59,11 +53,11 @@ struct ContentView: View {
             }
             if manager.visibleFarms.isEmpty {
                 ContentUnavailableView {
-                    Label(loc("Keine Hauptfarm", "No main farm"), systemImage: "leaf")
+                    Label(String(localized: "Keine Hauptfarm"), systemImage: "leaf")
                 } description: {
                     Text(manager.hasSaveFolder
-                         ? loc("Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier.", "Your farms appear here when a valid save is available.")
-                         : loc("Wähle deinen FT2-Spielstandordner in den Einstellungen.", "Choose your FT2 save folder in Settings."))
+                         ? String(localized: "Sobald ein gültiger Spielstand vorliegt, erscheinen deine Farmen hier.")
+                         : String(localized: "Wähle deinen FT2-Spielstandordner in den Einstellungen."))
                 }
             } else {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
@@ -104,8 +98,8 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 SettingsLink { Image(systemName: "gearshape") }
-                    .help(loc("Einstellungen", "Settings"))
-                    .accessibilityLabel(loc("Einstellungen", "Settings"))
+                    .help(String(localized: "Einstellungen"))
+                    .accessibilityLabel(String(localized: "Einstellungen"))
             }
         }
     }
@@ -122,7 +116,7 @@ private struct FarmDetailView: View {
     var body: some View {
         VStack(spacing: 20) {
             FarmCardView(farm: farm, state: state, compact: false)
-            if let explanation = farm.versionExplanation(isGerman: isGermanSystem) {
+            if let explanation = farm.versionExplanation() {
                 Label(explanation, systemImage: "exclamationmark.triangle.fill")
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -130,13 +124,11 @@ private struct FarmDetailView: View {
             }
             if farm.isInactive {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(loc("Farm nicht mehr gefunden", "Farm no longer found"))
+                    Text(String(localized: "Farm nicht mehr gefunden"))
                         .font(.headline)
                     Text(farm.automaticReference == nil
-                         ? loc("Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Es liegt kein gültiger Spielstand für einen Countdown vor.",
-                               "This farm is no longer registered in the Farm Together 2 saves. No valid save is available for a countdown.")
-                         : loc("Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Der JahreszeitenTracker verwendet deshalb den zuletzt bekannten Spielstand. Der Countdown läuft auf dieser Grundlage weiter.",
-                               "This farm is no longer registered in the Farm Together 2 saves. JahreszeitenTracker uses the last known save and continues the countdown on that basis."))
+                         ? String(localized: "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Es liegt kein gültiger Spielstand für einen Countdown vor.")
+                         : String(localized: "Diese Farm ist nicht mehr in den Spielständen von Farm Together 2 registriert. Der JahreszeitenTracker verwendet deshalb den zuletzt bekannten Spielstand. Der Countdown läuft auf dieser Grundlage weiter."))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -145,23 +137,21 @@ private struct FarmDetailView: View {
                     deletionCandidate = farm
                     confirmsDeletion = true
                 } label: {
-                    Text(loc("Farm endgültig löschen", "Permanently delete farm"))
+                    Text(String(localized: "Farm endgültig löschen"))
                 }
             }
         }
-        .alert(loc("„\(deletionCandidate?.displayName ?? farm.displayName)“ endgültig löschen?",
-                   "Permanently delete ‘\(deletionCandidate?.displayName ?? farm.displayName)’?"),
+        .alert(String(localized: "„\(deletionCandidate?.displayName ?? farm.displayName)“ endgültig löschen?"),
                isPresented: $confirmsDeletion, presenting: deletionCandidate) { candidate in
-            Button(loc("Abbrechen", "Cancel"), role: .cancel) { deletionCandidate = nil }
-            Button(loc("Endgültig löschen", "Permanently delete"), role: .destructive) {
+            Button(String(localized: "Abbrechen"), role: .cancel) { deletionCandidate = nil }
+            Button(String(localized: "Endgültig löschen"), role: .destructive) {
                 if let identity = candidate.identity, manager.removeInactiveFarm(identity: identity) {
                     onDeleted()
                 }
                 deletionCandidate = nil
             }
         } message: { _ in
-            Text(loc("Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert.",
-                     "All tracker data for this farm will be permanently removed from JahreszeitenTracker. This cannot be undone.\n\nFarm Together 2 saves will not be modified."))
+            Text(String(localized: "Die gespeicherten Daten dieser Farm werden vollständig aus dem JahreszeitenTracker entfernt. Diese Aktion kann nicht rückgängig gemacht werden.\n\nDie Spielstände von Farm Together 2 werden dabei nicht verändert."))
         }
     }
 }
@@ -201,7 +191,7 @@ private struct OverviewFarmButton: View {
         } isTargeted: { isDropTarget = $0 }
         .onHover { isHovered = $0 }
         .accessibilityLabel(farm.displayName)
-        .accessibilityHint(loc("Farm öffnen", "Open farm"))
+        .accessibilityHint(String(localized: "Farm öffnen"))
     }
 }
 

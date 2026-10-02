@@ -1,8 +1,6 @@
 import Foundation
 import Combine
 
-func loc(_ de: String, _ en: String) -> String { de }
-
 @main
 @MainActor
 struct FarmManagerTests {

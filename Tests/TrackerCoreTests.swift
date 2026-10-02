@@ -202,7 +202,7 @@ struct TrackerCoreTests {
         check(catalog.farms[0].automaticReference?.version == 348 && FarmSyncState.forFarm(catalog.farms[0]) == .unconfirmedVersion, "newest valid future reference accepted with warning")
         let acceptedFuture = catalog.farms[0].automaticReference
         check(FarmSyncState.forFarm(catalog.farms[0], confirmedVersions: [347, 348]) == .synchronized, "central confirmation reclassifies trust")
-        check(catalog.farms[0].versionExplanation(isGerman: true)?.contains("348") == true, "detail includes dynamic version")
+        check(catalog.farms[0].versionExplanation()?.contains("348") == true, "detail includes dynamic version")
         // Exact known identity can use a new plot; new identities and renames cannot merge.
         try metadataDocument([(0, created, "Changed"), (16, created, "New")], version: 348).write(to: mlk)
         catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
@@ -228,7 +228,7 @@ struct TrackerCoreTests {
         var confirmedButStillInvalid = catalog.farms[0]
         confirmedButStillInvalid.compatibility = FarmCompatibility(metadataVersion: 347, metadataRejected: true)
         confirmedButStillInvalid.automaticReference = base
-        check(confirmedButStillInvalid.versionExplanation(isGerman: true)?.contains("347") == true,
+        check(confirmedButStillInvalid.versionExplanation()?.contains("347") == true,
               "confirmation cannot hide version number of a retained invalid metadata report")
         let encoded = try JSONEncoder().encode(catalog)
         let restored = FarmCatalog.restored(current: encoded, now: now)
