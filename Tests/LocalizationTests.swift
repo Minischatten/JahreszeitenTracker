@@ -12,7 +12,7 @@ struct LocalizationTests {
         checks += 1
         precondition(condition, message)
     }
-    static func main() throws {
+    static func main() async throws {
         let arguments = CommandLine.arguments
         let language = arguments[1]
         let catalogURL = URL(fileURLWithPath: arguments[2])
@@ -50,6 +50,9 @@ struct LocalizationTests {
         let suite = "FT2LocalizationTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
+        let reminderService = LocalizationReminderNotifications()
+        let reminders = ReminderManager(service: reminderService, defaults: defaults)
+        let router = ReminderRouter()
         let session = FarmPresentationSession()
         let manager = FarmManager(defaults: defaults)
         manager.catalog.selectSource(path: "/synthetic/read-only/Café", bookmark: Data([1]))
@@ -75,17 +78,17 @@ struct LocalizationTests {
         noReference.compatibility = FarmCompatibility(metadataVersion: 348)
         check(noReference.versionExplanation()?.contains(language == "de" ? "Es liegt noch kein gültiger Spielstand" : "No valid save is available") == true, "complete unconfirmed-without-reference template")
         try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 900), to: output.appendingPathComponent("\(language)-overview.png"))
-        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 380, height: 900), to: output.appendingPathComponent("\(language)-narrow.png"))
-        try render(FarmDetailView(farm: manager.farms[2], state: manager.state(for: manager.farms[2], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-detail.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 900), to: output.appendingPathComponent("\(language)-overview.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 380, height: 900), to: output.appendingPathComponent("\(language)-narrow.png"))
+        try render(FarmDetailView(farm: manager.farms[2], state: manager.state(for: manager.farms[2], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-detail.png"))
         manager.catalog.merge((0..<3).map { FarmReading(metadata: metadata[$0], reference: references[$0], message: "",
             rejectedVersions: $0 == 2 ? [349] : []) }, sourceID: source)
-        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 1000), to: output.appendingPathComponent("\(language)-inactive.png"))
+        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 1000), to: output.appendingPathComponent("\(language)-inactive.png"))
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 348, rejected: false, deferredFarms: 1)
         check(manager.catalogVersionNotice?.contains("348") == true, "catalog version parameter")
         if language == "en" { check(manager.catalogVersionNotice?.hasPrefix("Save version 348 has not yet been verified.") == true, "English global version notice") }
-        try render(SettingsView().environmentObject(manager).environmentObject(session), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
-        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
+        try render(SettingsView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 349, rejected: true, deferredFarms: 0)
         check(manager.catalogVersionNotice?.contains("349") == true, "rejected catalog parameter")
         check(manager.farms.map(\.name) == persistedNames, "rendering never localizes stored names")
@@ -96,7 +99,7 @@ struct LocalizationTests {
         alert.addButton(withTitle: String(localized: "Endgültig löschen"))
         alert.layout()
         alert.window.appearance = NSAppearance(named: .aqua)
-        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        try await Task.sleep(for: .milliseconds(100))
         if let content = alert.window.contentView {
             content.wantsLayer = true
             content.layer?.backgroundColor = NSColor.white.cgColor
@@ -107,10 +110,28 @@ struct LocalizationTests {
         check(String(localized: "Keine Farmen eingeblendet") == (language == "de" ? "Keine Farmen eingeblendet" : "No Farms Shown"), "hidden empty title")
         check(String(localized: "Ausgeblendet") == (language == "de" ? "Ausgeblendet" : "Hidden"), "hidden accessibility marker")
         for farm in manager.knownFarms { manager.setHidden(true, identity: farm.identity!) }
-        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 780), to: output.appendingPathComponent("\(language)-all-hidden.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 780), to: output.appendingPathComponent("\(language)-all-hidden.png"))
         session.showHiddenFarms = true
-        try render(ContentView().environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-hidden-overview.png"))
-        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session), size: NSSize(width: 640, height: 1100), to: output.appendingPathComponent("\(language)-hidden-inactive-detail.png"))
+        try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-hidden-overview.png"))
+        try render(FarmDetailView(farm: manager.farms[3], state: manager.state(for: manager.farms[3], at: now), onDeleted: {}).environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 1100), to: output.appendingPathComponent("\(language)-hidden-inactive-detail.png"))
+        reminders.updateFarms(manager.catalog.farms)
+        await reminders.reconcile()
+        await reminders.setReminder(for: manager.farms[0], seasonIndex: 1)
+        check(reminders.active(for: manager.farms[0].identity) != nil, "active reminder appears for confirmed hidden farm")
+        try render(FarmReminderView(farm: manager.farms[0]).environmentObject(reminders), size: NSSize(width: 560, height: 180),
+                   to: output.appendingPathComponent("\(language)-active-reminder.png"))
+        for index in 0..<4 {
+            let reminder = SeasonReminder(id: UUID(), farmIdentity: manager.farms[0].identity!, seasonIndex: index,
+                createdAt: now, scheduledAt: now.addingTimeInterval(600), reference: references[0], farmName: farmName, state: .pending)
+            let content = MacNotificationService.content(for: reminder)
+            let expectedTitles = language == "de" ? ["Frühling hat begonnen", "Sommer hat begonnen", "Herbst hat begonnen", "Winter hat begonnen"]
+                : ["Spring has begun", "Summer has begun", "Autumn has begun", "Winter has begun"]
+            check(content.title == expectedTitles[index], "notification title localized")
+            let seasonNames = language == "de" ? ["Frühling", "Sommer", "Herbst", "Winter"] : ["spring", "summer", "autumn", "winter"]
+            let expectedBody = language == "de" ? "Auf „\(farmName)“ ist jetzt \(seasonNames[index])."
+                : "It is now \(seasonNames[index]) on “\(farmName)”."
+            check(content.body == expectedBody, "complete localized notification template preserves dynamic farm name")
+        }
         print("Passed \(checks) bundled localization/UI checks (\(language)); resources: \(Bundle.main.resourcePath ?? "")")
     }
 
@@ -131,4 +152,12 @@ struct LocalizationTests {
         view.cacheDisplay(in: view.bounds, to: bitmap)
         try bitmap.representation(using: .png, properties: [:])!.write(to: url)
     }
+}
+
+@MainActor
+private final class LocalizationReminderNotifications: ReminderNotifications {
+    func authorize() async throws -> Bool { true }
+    func schedule(_ reminder: SeasonReminder) async throws {}
+    func remove(_ requestIDs: [String]) {}
+    func pendingIDs() async -> Set<String> { [] }
 }

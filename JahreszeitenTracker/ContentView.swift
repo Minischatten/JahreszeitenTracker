@@ -32,6 +32,10 @@ extension Season {
 struct ContentView: View {
     @EnvironmentObject private var manager: FarmManager
     @EnvironmentObject private var session: FarmPresentationSession
+    @EnvironmentObject private var router: ReminderRouter
+    @Environment(\.openWindow) private var openWindow
+    @State private var routeWindow = ReminderWindowHandle()
+    @State private var routeMissing = false
     @State private var navigation = FarmNavigation()
 
     var body: some View {
@@ -43,7 +47,7 @@ struct ContentView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
             }
-            if let detail = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms),
+            if let detail = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms),
                manager.knownFarms.count > 1 || detail.hidden || navigation.openedIdentity != nil {
                 HStack {
                     Button { navigation.back() } label: {
@@ -53,7 +57,7 @@ struct ContentView: View {
                 }
                 .padding()
             }
-            if navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms) == nil && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty {
+            if navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms) == nil && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty {
                 ContentUnavailableView {
                     Label(manager.knownFarms.isEmpty ? String(localized: "Keine Hauptfarm")
                           : String(localized: "Keine Farmen eingeblendet"), systemImage: "leaf")
@@ -68,7 +72,7 @@ struct ContentView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     let now = Date()
                     ScrollView {
-                        if let farm = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms) {
+                        if let farm = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms) {
                             FarmDetailView(farm: farm, state: manager.state(for: farm, at: now),
                                            onHiddenChanged: { hidden in
                                                guard let identity = farm.identity else { return }
@@ -101,9 +105,35 @@ struct ContentView: View {
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
+        .background {
+            ReminderWindowAnchor(handle: routeWindow)
+                .frame(width: 0, height: 0)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .navigationTitle("JahreszeitenTracker")
-        .onChange(of: manager.knownFarms.map(\.identity)) { _, identities in
-            if let opened = navigation.openedIdentity, !identities.contains(opened) { navigation.reset() }
+        .onAppear {
+            router.openWindow = {
+                if let window = routeWindow.window, window.isVisible || window.isMiniaturized {
+                    window.deminiaturize(nil)
+                    window.makeKeyAndOrderFront(nil)
+                } else {
+                    openWindow(id: "main")
+                }
+            }
+            applyReminderRoute()
+        }
+        .onChange(of: router.requestToken) { _, _ in applyReminderRoute() }
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { note in
+            if note.object as? NSWindow === routeWindow.window { applyReminderRoute() }
+        }
+        .alert(String(localized: "Farm nicht verfügbar"), isPresented: $routeMissing) {
+            Button(String(localized: "OK"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "Die Farm dieser Erinnerung ist nicht mehr im JahreszeitenTracker vorhanden."))
+        }
+        .onChange(of: manager.knownFarms.map(\.identity)) { _, _ in
+            if let opened = navigation.openedIdentity, !manager.catalog.farms.contains(where: { $0.identity == opened }) { navigation.reset() }
         }
         .onChange(of: manager.catalog.activeSourceID ?? manager.catalog.displaySourceID) { _, _ in
             navigation.reset()
@@ -112,7 +142,7 @@ struct ContentView: View {
             // A lone hidden farm may have opened automatically while the menu
             // was enabled. Preserve that detail when the user disables it.
             let previousFarms = manager.knownFarms.filter { previouslyShown || !$0.hidden }
-            if let identity = navigation.detail(in: previousFarms, knownFarms: manager.knownFarms)?.identity {
+            if let identity = navigation.detail(in: previousFarms, knownFarms: manager.catalog.farms)?.identity {
                 navigation.open(identity)
             }
         }
@@ -124,6 +154,17 @@ struct ContentView: View {
             }
         }
     }
+    private func applyReminderRoute() {
+        guard let window = routeWindow.window, window.isVisible,
+              let identity = router.identity else { return }
+        if manager.catalog.farms.contains(where: { $0.identity == identity }) {
+            navigation.open(identity)
+        } else {
+            routeMissing = true
+        }
+        router.consume()
+    }
+
 }
 
 private struct FarmDetailView: View {
@@ -138,6 +179,7 @@ private struct FarmDetailView: View {
     var body: some View {
         VStack(spacing: 20) {
             FarmCardView(farm: farm, state: state, compact: false)
+            FarmReminderView(farm: farm)
             Toggle(String(localized: "Farm ausblenden"), isOn: Binding(
                 get: { manager.knownFarms.first { $0.identity == farm.identity }?.hidden ?? farm.hidden },
                 set: { hidden in

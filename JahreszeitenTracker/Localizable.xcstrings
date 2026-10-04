@@ -952,6 +952,363 @@
           }
         }
       }
+    },
+    "Saison-Erinnerung": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saison-Erinnerung"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Season Reminder"
+          }
+        }
+      }
+    },
+    "Saison": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saison"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Season"
+          }
+        }
+      }
+    },
+    "Erinnerung setzen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerung setzen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set Reminder"
+          }
+        }
+      }
+    },
+    "Erinnerung abbrechen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerung abbrechen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel Reminder"
+          }
+        }
+      }
+    },
+    "Erinnerung: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erinnerung: %@"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reminder: %@"
+          }
+        }
+      }
+    },
+    "Geplanter Zeitpunkt": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geplanter Zeitpunkt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scheduled time"
+          }
+        }
+      }
+    },
+    "Mitteilungen sind nicht erlaubt. Du kannst sie in den macOS-Systemeinstellungen aktivieren.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mitteilungen sind nicht erlaubt. Du kannst sie in den macOS-Systemeinstellungen aktivieren."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications are not allowed. You can enable them in macOS System Settings."
+          }
+        }
+      }
+    },
+    "Für diese Farm liegt kein bestätigter Spielstand für eine Erinnerung vor.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Für diese Farm liegt kein bestätigter Spielstand für eine Erinnerung vor."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This farm has no confirmed save available for a reminder."
+          }
+        }
+      }
+    },
+    "Die Erinnerung konnte nicht geplant werden. Bitte versuche es erneut.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Erinnerung konnte nicht geplant werden. Bitte versuche es erneut."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reminder could not be scheduled. Please try again."
+          }
+        }
+      }
+    },
+    "Die Erinnerung konnte nicht aktualisiert werden. Der bisherige Termin bleibt bestehen.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Erinnerung konnte nicht aktualisiert werden. Der bisherige Termin bleibt bestehen."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The reminder could not be updated. The previous time remains scheduled."
+          }
+        }
+      }
+    },
+    "Frühling hat begonnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frühling hat begonnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spring has begun"
+          }
+        }
+      }
+    },
+    "Sommer hat begonnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sommer hat begonnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summer has begun"
+          }
+        }
+      }
+    },
+    "Herbst hat begonnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Herbst hat begonnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autumn has begun"
+          }
+        }
+      }
+    },
+    "Winter hat begonnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winter hat begonnen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Winter has begun"
+          }
+        }
+      }
+    },
+    "Auf „%@“ ist jetzt Frühling.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf „%@“ ist jetzt Frühling."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is now spring on “%@”."
+          }
+        }
+      }
+    },
+    "Auf „%@“ ist jetzt Sommer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf „%@“ ist jetzt Sommer."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is now summer on “%@”."
+          }
+        }
+      }
+    },
+    "Auf „%@“ ist jetzt Herbst.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf „%@“ ist jetzt Herbst."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is now autumn on “%@”."
+          }
+        }
+      }
+    },
+    "Auf „%@“ ist jetzt Winter.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auf „%@“ ist jetzt Winter."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "It is now winter on “%@”."
+          }
+        }
+      }
+    },
+    "Farm nicht verfügbar": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm nicht verfügbar"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Farm Unavailable"
+          }
+        }
+      }
+    },
+    "Die Farm dieser Erinnerung ist nicht mehr im JahreszeitenTracker vorhanden.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Die Farm dieser Erinnerung ist nicht mehr im JahreszeitenTracker vorhanden."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The farm for this reminder is no longer in JahreszeitenTracker."
+          }
+        }
+      }
+    },
+    "OK": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

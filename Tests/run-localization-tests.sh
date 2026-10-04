@@ -21,6 +21,10 @@ xcrun swiftc -parse-as-library -module-cache-path "$check_dir/modules" \
   "$repo_dir/JahreszeitenTracker/FT2SaveAccess.swift" \
   "$repo_dir/JahreszeitenTracker/FarmPresentationSession.swift" \
   "$repo_dir/JahreszeitenTracker/FarmManager.swift" \
+  "$repo_dir/JahreszeitenTracker/SeasonReminder.swift" \
+  "$repo_dir/JahreszeitenTracker/ReminderManager.swift" \
+  "$repo_dir/JahreszeitenTracker/MacNotificationService.swift" \
+  "$repo_dir/JahreszeitenTracker/ReminderView.swift" \
   "$repo_dir/JahreszeitenTracker/FarmCardView.swift" \
   "$repo_dir/JahreszeitenTracker/SettingsView.swift" \
   "$check_dir/LocalizedViews.swift" -o "$check_app/Contents/MacOS/LocalizationCheck"
