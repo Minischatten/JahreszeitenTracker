@@ -10,6 +10,23 @@ struct FarmManagerTests {
         precondition(condition, message)
     }
     static func main() throws {
+        let panelHome = FileManager.default.temporaryDirectory.appendingPathComponent("FT2PanelStart." + UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: panelHome, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: panelHome) }
+        let storage = panelHome.appendingPathComponent("Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage", isDirectory: true)
+        check(FarmManager.saveFolderPanelStartURL(home: panelHome) == panelHome,
+              "missing SteamStorage falls back to home")
+        try FileManager.default.createDirectory(at: storage.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data().write(to: storage)
+        check(FarmManager.saveFolderPanelStartURL(home: panelHome) == panelHome,
+              "SteamStorage file is not a usable initial directory")
+        try FileManager.default.removeItem(at: storage)
+        try FileManager.default.createDirectory(at: storage, withIntermediateDirectories: true)
+        check(FarmManager.saveFolderPanelStartURL(home: panelHome) == storage,
+              "existing SteamStorage is the initial panel directory")
+        try FileManager.default.createDirectory(at: storage.appendingPathComponent("123456789"), withIntermediateDirectories: true)
+        check(FarmManager.saveFolderPanelStartURL(home: panelHome) == storage,
+              "Steam ID child is never selected automatically")
         let suite = "FT2TrackerManagerTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }

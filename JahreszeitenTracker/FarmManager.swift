@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AppKit
+import Darwin
 
 @MainActor
 final class FarmManager: ObservableObject {
@@ -67,6 +68,7 @@ final class FarmManager: ObservableObject {
 
     func chooseSaveFolder() {
         let panel = NSOpenPanel()
+        panel.directoryURL = Self.saveFolderPanelStartURL()
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.canCreateDirectories = false
@@ -82,6 +84,20 @@ final class FarmManager: ObservableObject {
             sourceStatus = "FT2: Ordner ausgewählt; Prüfung läuft"
             Task { await scanSources() }
         } catch { sourceStatus = error.localizedDescription }
+    }
+
+    static func saveFolderPanelStartURL(home: URL? = nil, fileManager: FileManager = .default) -> URL {
+        // Foundation's home points into the sandbox; the account home is only
+        // used to suggest a panel location, never to grant file access.
+        let userHome = home ?? getpwuid(getuid()).map {
+            URL(fileURLWithPath: String(cString: $0.pointee.pw_dir), isDirectory: true)
+        } ?? fileManager.homeDirectoryForCurrentUser
+        let storage = userHome.appendingPathComponent(
+            "Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage", isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard fileManager.fileExists(atPath: storage.path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return userHome }
+        return storage
     }
 
     func disconnectSaveFolder() {
