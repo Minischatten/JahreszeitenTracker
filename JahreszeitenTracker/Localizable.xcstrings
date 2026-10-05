@@ -1309,6 +1309,142 @@
           }
         }
       }
+    },
+    "Über JahreszeitenTracker": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Über JahreszeitenTracker"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About JahreszeitenTracker"
+          }
+        }
+      }
+    },
+    "Wird schon Software Logo": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird schon Software Logo"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wird schon Software logo"
+          }
+        }
+      }
+    },
+    "Version %@ (%@)": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@ (%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version %@ (%@)"
+          }
+        }
+      }
+    },
+    "Kostenloses Hobbyprojekt für Farm Together 2": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kostenloses Hobbyprojekt für Farm Together 2"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free hobby project for Farm Together 2"
+          }
+        }
+      }
+    },
+    "Dieses Projekt steht in keiner Verbindung zu Milkstone Studios und wird von Milkstone Studios weder entwickelt noch unterstützt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dieses Projekt steht in keiner Verbindung zu Milkstone Studios und wird von Milkstone Studios weder entwickelt noch unterstützt."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This project is not affiliated with, developed by, or endorsed by Milkstone Studios."
+          }
+        }
+      }
+    },
+    "Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten.": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copyright © 2026 WirdSchonSoftware. All rights reserved."
+          }
+        }
+      }
+    },
+    "E-Mail:": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E-Mail:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email:"
+          }
+        }
+      }
+    },
+    "Webseite:": {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Webseite:"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Website:"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

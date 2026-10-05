@@ -35,7 +35,12 @@ struct JahreszeitenTrackerApp: App {
         .defaultSize(width: 640, height: 780)
         .commands {
             FarmPresentationCommands(session: session)
+            AboutCommands()
         }
+        Window(String(localized: "Über JahreszeitenTracker"), id: "about") {
+            AboutView()
+        }
+        .windowResizability(.contentSize)
         Settings {
             SettingsView()
                 .environmentObject(manager)
