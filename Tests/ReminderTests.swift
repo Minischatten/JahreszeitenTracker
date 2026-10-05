@@ -145,8 +145,10 @@ struct ReminderTests {
         let anotherSource = FarmIdentity(sourceID: UUID(), slotIndex: reused.slotIndex, creationTime: reused.creationTime)
         var foreign = other; foreign.identity = anotherSource
         navigation.open(anotherSource)
-        check(navigation.detail(in: [other], knownFarms: [other, foreign])?.identity == anotherSource,
+        check(navigation.detail(in: [other], knownFarms: [other], routingFarms: [other, foreign])?.identity == anotherSource,
               "notification routing can open exact stored identity from another source without changing current source")
+        check(FarmNavigation().detail(in: [other], knownFarms: [other], routingFarms: [other, foreign])?.identity == reused,
+              "other stored sources do not prevent automatic detail for a single known farm")
 
         let router = ReminderRouter()
         var opened = 0

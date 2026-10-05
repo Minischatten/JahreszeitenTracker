@@ -289,11 +289,11 @@ struct FarmManagerTests {
         navigation.back()
         check(navigation.detail(in: [all[1]], knownFarms: all) == nil && navigation.showsOverview, "back explicitly shows overview even with one remaining")
         navigation.reset()
-        check(navigation.detail(in: [all[1]], knownFarms: all)?.identity == ids[1], "source reset restores normal single entry")
+        check(navigation.detail(in: [all[1]], knownFarms: all) == nil, "source reset retains overview for multiple known farms")
         navigation.open(ids[0])
         check(navigation.detail(in: [all[1]], knownFarms: [all[1]]) == nil, "deleted or other-source identity cannot resolve")
         var menuNavigation = FarmNavigation()
-        let automaticHiddenDetail = menuNavigation.detail(in: [all[0]], knownFarms: all)!
+        let automaticHiddenDetail = menuNavigation.detail(in: [all[0]], knownFarms: [all[0]])!
         menuNavigation.open(automaticHiddenDetail.identity!)
         check(menuNavigation.detail(in: [], knownFarms: all)?.identity == ids[0], "menu handoff preserves automatically opened hidden singleton")
         check(manager.setHidden(true, identity: newFarm.identity!), "hide new incarnation independently")
@@ -305,6 +305,51 @@ struct FarmManagerTests {
         check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty && !manager.knownFarms.isEmpty, "all hidden distinguishes empty registry from empty presentation")
         session.showHiddenFarms = true
         check(manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).map(\.identity) == manager.knownFarms.map(\.identity), "menu restores all cards in catalog order")
+
+        // Restart with every visible/hidden combination, using actual catalog persistence.
+        for count in 0...4 {
+            for hiddenMask in 0..<(1 << count) {
+                var initialCatalog = migrated
+                initialCatalog.farms = Array(all.prefix(count))
+                for index in initialCatalog.farms.indices {
+                    initialCatalog.farms[index].hidden = hiddenMask & (1 << index) != 0
+                }
+                defaults.set(try JSONEncoder().encode(initialCatalog), forKey: "ft2FarmCatalog_v2")
+                let restarted = FarmManager(defaults: defaults)
+                let restartedSession = FarmPresentationSession()
+                let displayed = restarted.visibleFarms(showHiddenFarms: restartedSession.showHiddenFarms)
+                let expected = count == 1 && hiddenMask == 0 ? all[0].identity : nil
+                var initialNavigation = FarmNavigation()
+                check(initialNavigation.detail(in: displayed, knownFarms: restarted.knownFarms,
+                                               routingFarms: restarted.catalog.farms)?.identity == expected,
+                      "restart navigation: \(count) known, hidden mask \(hiddenMask)")
+                check(initialNavigation.shouldSuppressInitialControlFocus(
+                    in: displayed, knownFarms: restarted.knownFarms, routingFarms: restarted.catalog.farms)
+                      == (!displayed.isEmpty && count > 1),
+                      "overview startup focus protection: \(count) known, hidden mask \(hiddenMask)")
+                check(!restartedSession.showHiddenFarms && restarted.knownFarms.count == count,
+                      "restart keeps known catalog and resets only session visibility")
+                initialNavigation.reset()
+                check(initialNavigation.detail(in: displayed, knownFarms: restarted.knownFarms)?.identity == expected,
+                      "central reset follows same rule as initial navigation")
+                restartedSession.showHiddenFarms = true
+                check(FarmNavigation().detail(in: restarted.visibleFarms(showHiddenFarms: restartedSession.showHiddenFarms),
+                                              knownFarms: restarted.knownFarms)?.identity == (count == 1 ? all[0].identity : nil),
+                      "show-hidden menu keeps multiple known farms in overview")
+                if let target = restarted.knownFarms.last?.identity {
+                    initialNavigation.open(target)
+                    check(initialNavigation.detail(in: displayed, knownFarms: restarted.knownFarms)?.identity == target,
+                          "explicit detail/hidden reminder bypasses automatic rule")
+                    check(!initialNavigation.shouldSuppressInitialControlFocus(in: displayed, knownFarms: restarted.knownFarms),
+                          "explicit detail preserves normal focus behavior")
+                    initialNavigation.back()
+                    check(initialNavigation.detail(in: displayed, knownFarms: restarted.knownFarms) == nil,
+                          "back preserves explicit overview")
+                    check(initialNavigation.shouldSuppressInitialControlFocus(in: displayed, knownFarms: restarted.knownFarms)
+                          == !displayed.isEmpty, "overview return uses focus protection even for a single card")
+                }
+            }
+        }
 
     }
 

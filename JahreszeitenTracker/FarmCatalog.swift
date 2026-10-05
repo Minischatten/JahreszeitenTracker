@@ -282,13 +282,21 @@ nonisolated struct FarmCatalog: Codable, Sendable {
 nonisolated struct FarmNavigation {
     var openedIdentity: FarmIdentity?
     var showsOverview = false
-    func detail(in farms: [FarmData], knownFarms: [FarmData]? = nil) -> FarmData? {
+    func detail(in farms: [FarmData], knownFarms: [FarmData]? = nil,
+                routingFarms: [FarmData]? = nil) -> FarmData? {
         if let openedIdentity {
-            return (knownFarms ?? farms).first { $0.identity == openedIdentity }
+            return (routingFarms ?? knownFarms ?? farms).first { $0.identity == openedIdentity }
         }
         guard !showsOverview else { return nil }
-        if farms.count == 1 { return farms.first }
+        // Filtering must not turn a multi-farm catalog into automatic detail.
+        // Explicit reminder routing may also resolve farms from another source.
+        if (knownFarms ?? farms).count == 1 && farms.count == 1 { return farms.first }
         return nil
+    }
+    func shouldSuppressInitialControlFocus(in farms: [FarmData], knownFarms: [FarmData],
+                                           routingFarms: [FarmData]? = nil) -> Bool {
+        // Overview cards must not receive automatic focus, even with one card.
+        !farms.isEmpty && detail(in: farms, knownFarms: knownFarms, routingFarms: routingFarms) == nil
     }
     mutating func open(_ identity: FarmIdentity) { openedIdentity = identity; showsOverview = false }
     mutating func back() { openedIdentity = nil; showsOverview = true }

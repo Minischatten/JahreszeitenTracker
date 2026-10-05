@@ -10,13 +10,15 @@ Der DMG-Erstellungsprozess basiert auf dem projektübergreifend verwendeten WSS-
 
 ## Erneut bauen
 
-Voraussetzungen: macOS, Xcode und Python 3 mit `venv`/`pip`; Internetzugang für die versionsgebundenen Buildwerkzeuge `ds-store 1.3.3` und `mac-alias 2.2.3`. Diese werden isoliert in `/private/tmp` installiert und nicht mitgeliefert.
+Voraussetzungen: macOS, Xcode und Python 3.10 oder neuer mit `venv`/`pip`; Internetzugang für die versionsgebundenen Buildwerkzeuge `ds-store 1.3.3` und `mac-alias 2.2.3`. Diese werden isoliert in `/private/tmp` installiert und nicht mitgeliefert. Apples Python 3.9 reicht hierfür nicht; gegebenenfalls `PYTHON` auf einen bereits installierten neueren Interpreter setzen.
 
 ```sh
 bash Distribution/build-dmg.sh
 ```
 
 Optional: `PYTHON=/pfad/zu/python3`. Eine vorhandene Ausgabe vorher verschieben; das Script überschreibt sie nicht. Ohne `APP_PATH` baut das Script ausschließlich die mittels `git archive HEAD` exportierten, committed App-Quellen als frisches Universal-Release-Archiv.
+
+Xcode signiert das Release-Archiv ad hoc (`CODE_SIGN_STYLE=Manual`, `CODE_SIGN_IDENTITY=-`) und übernimmt dabei die im Projekt definierten Entitlements. Das Script deaktiviert die Signierung nicht und signiert die App anschließend nicht erneut. `verify-app.py` prüft beide Architekturen einschließlich Sandbox und benutzergewähltem Nur-Lese-Zugriff, Version, Mindestversion, Sprachen und AppIcon. Diese Prüfung erfolgt vor dem Packaging und nochmals direkt im schreibgeschützt gemounteten fertigen DMG. Fehlende Entitlements führen zum Abbruch; dies gilt auch für ein übergebenes `APP_PATH`.
 
 Für andere WSS-Apps oder spätere Versionen nur die app-spezifische Konfiguration anpassen, die gemeinsame Layoutdatei beibehalten. Ein bereits erzeugtes Release-App-Bundle kann explizit übergeben werden:
 

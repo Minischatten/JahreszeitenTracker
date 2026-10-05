@@ -47,7 +47,7 @@ struct ContentView: View {
                     .padding(.horizontal)
                     .padding(.top, 8)
             }
-            if let detail = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms),
+            if let detail = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms, routingFarms: manager.catalog.farms),
                manager.knownFarms.count > 1 || detail.hidden || navigation.openedIdentity != nil {
                 HStack {
                     Button { navigation.back() } label: {
@@ -57,7 +57,7 @@ struct ContentView: View {
                 }
                 .padding()
             }
-            if navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms) == nil && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty {
+            if navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms, routingFarms: manager.catalog.farms) == nil && manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).isEmpty {
                 ContentUnavailableView {
                     Label(manager.knownFarms.isEmpty ? String(localized: "Keine Hauptfarm")
                           : String(localized: "Keine Farmen eingeblendet"), systemImage: "leaf")
@@ -72,7 +72,7 @@ struct ContentView: View {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     let now = Date()
                     ScrollView {
-                        if let farm = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.catalog.farms) {
+                        if let farm = navigation.detail(in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms), knownFarms: manager.knownFarms, routingFarms: manager.catalog.farms) {
                             FarmDetailView(farm: farm, state: manager.state(for: farm, at: now),
                                            onHiddenChanged: { hidden in
                                                guard let identity = farm.identity else { return }
@@ -101,7 +101,9 @@ struct ContentView: View {
         .frame(minWidth: 380, minHeight: 440)
         .background(Color(nsColor: .windowBackgroundColor))
         .background {
-            InitialWindowFocus(suppressInitialControlFocus: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms).count > 1)
+            InitialWindowFocus(suppressInitialControlFocus: navigation.shouldSuppressInitialControlFocus(
+                in: manager.visibleFarms(showHiddenFarms: session.showHiddenFarms),
+                knownFarms: manager.knownFarms, routingFarms: manager.catalog.farms))
                 .frame(width: 0, height: 0)
                 .accessibilityHidden(true)
         }
@@ -142,7 +144,7 @@ struct ContentView: View {
             // A lone hidden farm may have opened automatically while the menu
             // was enabled. Preserve that detail when the user disables it.
             let previousFarms = manager.knownFarms.filter { previouslyShown || !$0.hidden }
-            if let identity = navigation.detail(in: previousFarms, knownFarms: manager.catalog.farms)?.identity {
+            if let identity = navigation.detail(in: previousFarms, knownFarms: manager.knownFarms, routingFarms: manager.catalog.farms)?.identity {
                 navigation.open(identity)
             }
         }
