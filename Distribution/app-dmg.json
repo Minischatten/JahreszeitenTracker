@@ -1,0 +1,11 @@
+{
+  "appName": "JahreszeitenTracker",
+  "project": "JahreszeitenTracker.xcodeproj",
+  "scheme": "JahreszeitenTracker",
+  "version": "1.0",
+  "build": "1",
+  "minimumSystemVersion": "14.0",
+  "appIcon": "Contents/Resources/AppIcon.icns",
+  "volumeName": "JahreszeitenTracker",
+  "dmgFile": "JahreszeitenTracker-1.0.dmg"
+}
