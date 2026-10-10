@@ -47,6 +47,7 @@ struct LocalizationTests {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         app.appearance = NSAppearance(named: .aqua)
+        try checkStartupFocus()
         let suite = "FT2LocalizationTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -132,10 +133,82 @@ struct LocalizationTests {
                 : "It is now \(seasonNames[index]) on “\(farmName)”."
             check(content.body == expectedBody, "complete localized notification template preserves dynamic farm name")
         }
+        manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 350, rejected: false, deferredFarms: 0)
+        check(manager.catalogVersionNotice?.contains("350") == true, "350 warning stays visible")
+        session.showHiddenFarms = false
+        for displayedCount in [1, 4] {
+            for index in manager.farms.indices {
+                manager.setHidden(index >= displayedCount, identity: manager.farms[index].identity!)
+            }
+            check(FarmNavigation().shouldSuppressInitialControlFocus(
+                in: manager.visibleFarms(), knownFarms: manager.knownFarms),
+                  "warning overview protects startup with \(displayedCount) cards")
+            try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router),
+                       size: NSSize(width: 640, height: 950),
+                       to: output.appendingPathComponent("\(language)-350-warning-\(displayedCount)-cards.png"),
+                       expectNeutralFocus: true)
+        }
         print("Passed \(checks) bundled localization/UI checks (\(language)); resources: \(Bundle.main.resourcePath ?? "")")
     }
 
-    static func render<V: View>(_ view: V, size: NSSize, to url: URL) throws {
+    static func checkStartupFocus() throws {
+        check(!FT2VersionPolicy.isConfirmed(350), "350 remains unconfirmed during focus regression")
+        for cardCount in 1...2 {
+            for backwards in [false, true] {
+                let root = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 440))
+                let window = NSWindow(contentRect: root.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+                window.contentView = root
+                defer { window.contentView = nil }
+                let focus = InitialWindowFocus.FocusView()
+                root.addSubview(focus) // Initially unarmed: must not consume startup.
+                let buttons = (0..<cardCount).map { index in
+                    let button = FocusTestButton(frame: NSRect(x: 20 + index * 280, y: 100, width: 260, height: 200))
+                    root.addSubview(button)
+                    return button
+                }
+                focus.suppressInitialControlFocus = true
+                focus.layout()
+                check(window.initialFirstResponder === focus && window.firstResponder === focus,
+                      "late overview activation establishes neutral startup responder")
+                // Simulate an inserted warning and a subsequent control assignment.
+                root.addSubview(NSTextField(labelWithString: "Spielstandversion 350"))
+                check(window.makeFirstResponder(buttons[0]), "control can accept normal keyboard focus")
+                focus.layout()
+                check(window.firstResponder === focus, "later warning layout retains neutral startup focus")
+                check(!focus.canBecomeKeyView, "neutral helper is never an ordinary tab stop")
+                let tab = NSEvent.keyEvent(with: .keyDown, location: .zero,
+                    modifierFlags: backwards ? [.shift] : [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "\t",
+                    charactersIgnoringModifiers: "\t", isARepeat: false, keyCode: 48)!
+                focus.keyDown(with: tab)
+                check(buttons.contains { window.firstResponder === $0 }, "Tab/Shift-Tab hands off to native key-view loop")
+                let responder = window.firstResponder
+                focus.layout()
+                check(window.firstResponder === responder && window.initialFirstResponder !== focus,
+                      "layout never reclaims deliberate keyboard focus")
+            }
+        }
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 440))
+        let window = NSWindow(contentRect: root.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.contentView = root
+        defer { window.contentView = nil }
+        let focus = InitialWindowFocus.FocusView()
+        focus.suppressInitialControlFocus = true
+        root.addSubview(focus)
+        let button = FocusTestButton(frame: NSRect(x: 20, y: 100, width: 260, height: 200))
+        root.addSubview(button)
+        focus.layout()
+        let click = NSEvent.mouseEvent(with: .leftMouseDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: window.windowNumber, context: nil,
+            eventNumber: 1, clickCount: 1, pressure: 1)!
+        focus.observeUserInteraction(click)
+        window.makeFirstResponder(button)
+        focus.layout()
+        check(window.firstResponder === button && window.initialFirstResponder !== focus,
+              "deliberate mouse input also ends startup protection")
+    }
+
+    static func render<V: View>(_ view: V, size: NSSize, to url: URL, expectNeutralFocus: Bool = false) throws {
         let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height).background(Color.white))
         host.frame = NSRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
@@ -144,6 +217,10 @@ struct LocalizationTests {
         // Allow SwiftUI's layout/render transactions to finish in the isolated test host.
         RunLoop.main.run(until: Date().addingTimeInterval(0.1))
         host.layoutSubtreeIfNeeded()
+        if expectNeutralFocus {
+            check(window.firstResponder is InitialWindowFocus.FocusView,
+                  "actual SwiftUI warning overview has neutral startup responder")
+        }
         try snapshot(host, to: url)
         window.contentView = nil
     }
@@ -152,6 +229,13 @@ struct LocalizationTests {
         view.cacheDisplay(in: view.bounds, to: bitmap)
         try bitmap.representation(using: .png, properties: [:])!.write(to: url)
     }
+}
+
+// Make the isolated native-button tests independent of macOS's global Tab setting.
+@MainActor
+private final class FocusTestButton: NSButton {
+    override var acceptsFirstResponder: Bool { true }
+    override var canBecomeKeyView: Bool { true }
 }
 
 @MainActor

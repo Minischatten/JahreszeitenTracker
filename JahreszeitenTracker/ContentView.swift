@@ -284,11 +284,13 @@ private struct InitialWindowFocus: NSViewRepresentable {
     func updateNSView(_ view: FocusView, context: Context) {
         view.suppressInitialControlFocus = suppressInitialControlFocus
         view.configureInitialResponder()
+        view.needsLayout = true
     }
 
     final class FocusView: NSView {
         var suppressInitialControlFocus = false
-        private var configuredInitialResponder = false
+        private var finishedStartupFocus = false
+        private var interactionMonitor: Any?
         private var handedOffKeyboardFocus = false
 
         // A plain NSView draws no control focus ring; native cards retain theirs.
@@ -297,6 +299,7 @@ private struct InitialWindowFocus: NSViewRepresentable {
         override var canBecomeKeyView: Bool { false }
 
         override func keyDown(with event: NSEvent) {
+            observeUserInteraction(event)
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             guard event.keyCode == 48,
                   modifiers.intersection([.command, .control, .option]).isEmpty else {
@@ -336,13 +339,49 @@ private struct InitialWindowFocus: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            if window != nil, !finishedStartupFocus, interactionMonitor == nil {
+                interactionMonitor = NSEvent.addLocalMonitorForEvents(
+                    matching: [.keyDown, .leftMouseDown, .rightMouseDown, .otherMouseDown]) { [weak self] event in
+                    self?.observeUserInteraction(event)
+                    return event
+                }
+            }
             configureInitialResponder()
         }
 
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            if newWindow !== window { removeInteractionMonitor() }
+            super.viewWillMove(toWindow: newWindow)
+        }
+
+        override func layout() {
+            super.layout()
+            configureInitialResponder()
+            guard !finishedStartupFocus, suppressInitialControlFocus, let window else { return }
+            // SwiftUI can assign a control responder during a later layout.
+            // Protect startup only, until the first deliberate input event.
+            if window.firstResponder !== self { window.makeFirstResponder(self) }
+        }
+
+        func observeUserInteraction(_ event: NSEvent) {
+            guard let window,
+                  event.window === window || (event.window == nil && NSApp.keyWindow === window) else { return }
+            finishedStartupFocus = true
+            if window.initialFirstResponder === self { window.initialFirstResponder = nil }
+            removeInteractionMonitor()
+        }
+
+        private func removeInteractionMonitor() {
+            if let interactionMonitor { NSEvent.removeMonitor(interactionMonitor) }
+            interactionMonitor = nil
+        }
+
         func configureInitialResponder() {
-            guard let window, !configuredInitialResponder else { return }
-            configuredInitialResponder = true
-            guard suppressInitialControlFocus, !window.isVisible, !window.isKeyWindow else { return }
+            guard let window, !finishedStartupFocus else { return }
+            guard suppressInitialControlFocus else {
+                if window.initialFirstResponder === self { window.initialFirstResponder = nil }
+                return
+            }
             window.initialFirstResponder = self
         }
     }
