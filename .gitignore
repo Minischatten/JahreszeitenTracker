@@ -1,0 +1,19 @@
+# Generated distribution artifacts
+/Distribution/DMG-Background.png
+/Distribution/DMG-Commit.txt
+/Distribution/*.dmg
+/Distribution/*.dmg.sha256
+
+# Generated compiler and build artifacts
+ModuleCache/
+*.pcm
+*.swiftmodule
+/Diagnose/SteamZeit/SteamZeit
+/DerivedData/
+/build/
+*.xcarchive/
+
+# Personal macOS and Xcode state
+.DS_Store
+xcuserdata/
+*.xcuserstate
