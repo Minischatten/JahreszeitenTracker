@@ -14,7 +14,7 @@ nonisolated enum TrackerClock {
 
 /// Central, explicitly tested versions. Newer versions are only structurally probed.
 nonisolated enum FT2VersionPolicy {
-    static let confirmed: Set<Int> = [347]
+    static let confirmed: Set<Int> = [347, 350]
     static func isConfirmed(_ version: Int) -> Bool { confirmed.contains(version) }
     static func mayRead(_ version: Int) -> Bool { isConfirmed(version) || version > 347 }
 }

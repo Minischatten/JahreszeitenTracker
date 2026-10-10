@@ -78,12 +78,11 @@ nonisolated enum FT2SaveAccess {
     }
     static func areaSnapshot(in folder: URL, slot: Int, now: Date, createdAt: Int64? = nil) throws -> AreaObservation {
         let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-        let allowed = Set((0..<6).map { "farm_\(slot)_\($0).data" })
         var newest: SaveReference?
         var conflict = false
         var rejectedVersions = Set<Int>()
         var newestVersions = Set<Int>()
-        for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where allowed.contains(file.lastPathComponent) {
+        for file in files.sorted(by: { $0.lastPathComponent < $1.lastPathComponent }) where isAreaFilename(file.lastPathComponent, slot: slot) {
             guard let bytes = try? readOnlySnapshot(file) else { continue }
             let reference: SaveReference
             do {
@@ -113,6 +112,15 @@ nonisolated enum FT2SaveAccess {
         return AreaObservation(reference: conflict ? nil : newest,
                                rejectedVersions: rejectedVersions.sorted(),
                                observedVersion: newestVersions.max(), conflict: conflict)
+    }
+
+    static func isAreaFilename(_ name: String, slot: Int) -> Bool {
+        let prefix = "farm_\(slot)_"
+        guard slot >= 0, name.hasPrefix(prefix), name.hasSuffix(".data") else { return false }
+        let indexText = name.dropFirst(prefix.count).dropLast(5)
+        guard !indexText.isEmpty, indexText.utf8.allSatisfy({ (48...57).contains($0) }),
+              let index = Int(indexText), index >= 0 else { return false }
+        return name == "\(prefix)\(index).data"
     }
 
     static func readOnlySnapshot(_ url: URL) throws -> Data {
