@@ -120,6 +120,34 @@ Die bestehende Referenzarithmetik bleibt unverändert: UTC-.NET-DateTime-Ticks,
 worldTicks, 18 nextSeasonChange, 21 currentSeason. Nur die sichtbare Restzeit nutzt
 `min(remaining + 2, 1020)`. Die +2 Sekunden verändern weder Saison noch Wechsel.
 
+## Beobachtete Zeitquellen und Anzeigekompensation
+
+Ein isolierter Drei-Minuten-Vergleich vom 1. Oktober 2026 erfasste 1.800 Messungen
+im Abstand von ungefähr 100 ms: `Date()` vor und nach dem Abruf von
+`SteamUtils.GetServerRealTime()`, ergänzt um monotone Systemzeit. Verglichen wurde
+der Mittelwert der beiden Systemzeitwerte mit der unveränderten Steam-Ganzsekunde.
+Die Differenz Systemzeit minus Steam-Wert lag zwischen +0,602181 und +1,602624
+Sekunden, im Mittel bei +1,115494 Sekunden. Die beobachteten Steam-Schritte waren
+0 oder +1 Sekunde; es gab keine Rückwärtsschritte oder Mehrsekundensprünge. Die
+Änderung der Systemzeit gegenüber der monotonen Zeit betrug insgesamt +0,001047
+Sekunden und lieferte keinen Hinweis auf einen Systemzeitsprung von einer Sekunde.
+
+Die ungefähr eine Sekunde breite Rohwert-Spanne ist mit Ganzsekundenquantisierung
+und Abtastphase vereinbar; sie beweist keine entsprechende Schwankung eines
+kontinuierlichen Offsets. Ohne Kenntnis der internen Quantisierung lässt sich
+kein exakter kontinuierlicher Steam-/Systemzeitversatz bestimmen. Die Messung
+allein erklärt weder einen festen Zwei-Sekunden-Versatz noch langfristige Drift.
+FT2-Tickphase, Widget-Aktualisierung und die sichtbaren Countdown-Anzeigen wurden
+in diesem Vergleich nicht mitgemessen. Ob das Spiel dabei geschlossen war,
+wurde nicht überprüft.
+
+Die +2 Sekunden sind deshalb eine empirische reine Anzeigekompensation, die
+anschließend durch Vergleiche mit der sichtbaren Spielanzeige geprüft wurde.
+Sie verändern weder die gespeicherte Referenz noch Saisonwechsel oder
+Reminder-Termine. App, Tests und Build benötigen keine Steam-Bibliothek und
+fragen keine Steam-Zeitquelle ab; die Synchronisationsbasis bleibt der
+validierte Spielstand zusammen mit der realen Systemzeit.
+
 ## Schreibschutz und Grenzen
 
 FT2SaveAccess ist die Produktionsschnittstelle zu FT2-Dateien: Darwin.open mit

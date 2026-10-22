@@ -44,7 +44,10 @@ struct LocalizationTests {
         check(title == (language == "de" ? "„\(farmName)“ endgültig löschen?" : "Permanently delete “\(farmName)”?"), "farm interpolation remains verbatim")
         check(String(localized: "Abbrechen") == (language == "de" ? "Abbrechen" : "Cancel"), "custom cancel button")
         let hint = "~/Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage/<Steam-ID>/"
-        check(String(localized: "Normalerweise unter macOS: \(hint)").contains(hint), "path never translated")
+        check(String(localized: "Normalerweise unter: \(hint)").contains(hint), "path never translated")
+        check(String(localized: "Normalerweise unter: \(hint)") ==
+              (language == "de" ? "Normalerweise unter: \(hint)" : "Usually located at: \(hint)"),
+              "concise folder hint uses the bundled translation without changing the path")
         check(CountdownDisplay.text(remaining: 1020) == "17:00", "countdown unchanged")
 
         let app = NSApplication.shared

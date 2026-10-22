@@ -21,7 +21,7 @@ struct SettingsView: View {
                         Button(String(localized: "Zugriff entfernen")) { manager.disconnectSaveFolder() }
                     }
                 }
-                Text(String(localized: "Normalerweise unter macOS: \(saveFolderHint)"))
+                Text(String(localized: "Normalerweise unter: \(saveFolderHint)"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .textSelection(.enabled)

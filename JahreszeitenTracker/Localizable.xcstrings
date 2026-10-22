@@ -505,20 +505,20 @@
         }
       }
     },
-    "Normalerweise unter macOS: %@": {
+    "Normalerweise unter: %@": {
       "comment": "User-facing text. Farm names, version numbers and paths are unchanged parameters.",
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Normalerweise unter macOS: %@"
+            "value": "Normalerweise unter: %@"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Typical location on macOS: %@"
+            "value": "Usually located at: %@"
           }
         }
       }

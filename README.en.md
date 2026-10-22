@@ -24,9 +24,20 @@ Currently confirmed FT2 save versions: **347, 350 and 352**. The intermediate ve
 
 ## Installation and first launch
 
-Open the DMG and drag `JahreszeitenTracker.app` onto `Programme` (the Applications folder link). Then launch the app from Applications.
+1. Open the DMG and drag `JahreszeitenTracker.app` onto `Programme` (the Applications folder link).
+2. Launch the app from Applications.
+3. If macOS/Gatekeeper blocks the first launch, explicitly allow the app under **System Settings → Privacy & Security → Open Anyway**. Only do this if you trust the source of the app. [More information from Apple](https://support.apple.com/en-us/102445).
+4. On the first successful launch, choose **Choose Save Folder…** in Settings and select the folder for your own Steam ID.
 
-The published app is **ad-hoc signed**, but it is neither signed with an Apple Developer ID nor notarized by Apple. macOS/Gatekeeper may therefore block the first launch after downloading it. After a blocked launch, you can explicitly allow the app under **System Settings → Privacy & Security → Open Anyway**. Only do this if you trust the source of the app. [More information from Apple](https://support.apple.com/en-us/102445).
+Usual location:
+
+```text
+~/Library/Application Support/Milkstone Studios/FarmTogether2/SteamStorage/<Steam-ID>/
+```
+
+`<Steam-ID>` represents your own Steam ID. Select that Steam ID folder, not its parent `SteamStorage` folder. JahreszeitenTracker then automatically detects the existing main farms and plots and accesses FT2 saves **in read-only mode**; saves are never modified.
+
+The published app is **ad-hoc signed**, but it is neither signed with an Apple Developer ID nor notarized by Apple. macOS/Gatekeeper may therefore block the first launch after downloading it.
 
 The current free hobby-project distribution deliberately does not use a paid Apple Developer account. This signing status is an intentional characteristic of the distribution; it does not promise a future Developer ID-signed or notarized version.
 
@@ -43,8 +54,6 @@ sh Tests/run-localization-tests.sh /path/to/built/JahreszeitenTracker.app
 For your own modified builds or forks, replace the graphics listed in [BRANDING.en.md](BRANDING.en.md) with your own first, unless you have separate permission. The season images may continue to be used under the GPL.
 
 The optional [WSS DMG workflow](Distribution/README.md) additionally requires Python 3.10 or later with `venv`/`pip` and downloads the external MIT-licensed tools [ds-store 1.3.3](https://pypi.org/project/ds-store/1.3.3/) and [mac-alias 2.2.3](https://pypi.org/project/mac-alias/2.2.3/). These are build dependencies, not original project code, and are not embedded in the app. Their copyright and license notices must be retained if their code is redistributed. Apple system frameworks and Xcode are subject to their own terms.
-
-The optional [Steam time diagnostic](Diagnose/SteamZeit/README.md) is a separate development helper. It requires a locally installed library from your own FT2 installation; that library is not part of this repository and is not required by the tracker app.
 
 ## License and provenance
 

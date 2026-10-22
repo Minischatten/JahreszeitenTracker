@@ -8,7 +8,6 @@
 ModuleCache/
 *.pcm
 *.swiftmodule
-/Diagnose/SteamZeit/SteamZeit
 /DerivedData/
 /build/
 *.xcarchive/
