@@ -30,6 +30,9 @@ struct LocalizationTests {
             check(unit["state"] == "translated", "translation complete")
             check(key.components(separatedBy: "%@").count == actual.components(separatedBy: "%@").count, "parameters retained")
         }
+        check(String(localized: "Quellcode: GPL-3.0-only\nBranding separat lizenziert.") ==
+              (language == "de" ? "Quellcode: GPL-3.0-only\nBranding separat lizenziert." : "Source code: GPL-3.0-only\nBranding licensed separately."),
+              "About license text uses the actual bundled language")
         check(String(localized: "Synchronisiert") == (language == "de" ? "Synchronisiert" : "Synced"), "native runtime lookup")
         check(Season.spring.name() == (language == "de" ? "Frühling" : "Spring"), "season display follows native language")
         check(Season.allCases.map(\.rawValue) == ["spring", "summer", "autumn", "winter"], "persisted seasons never localized")
@@ -88,6 +91,7 @@ struct LocalizationTests {
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 348, rejected: false, deferredFarms: 1)
         check(manager.catalogVersionNotice?.contains("348") == true, "catalog version parameter")
         if language == "en" { check(manager.catalogVersionNotice?.hasPrefix("Save version 348 has not yet been verified.") == true, "English global version notice") }
+        try render(AboutView(), size: NSSize(width: 380, height: 800), to: output.appendingPathComponent("\(language)-about.png"))
         try render(SettingsView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 560, height: 900), to: output.appendingPathComponent("\(language)-settings.png"))
         try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router), size: NSSize(width: 640, height: 950), to: output.appendingPathComponent("\(language)-catalog-warning.png"))
         manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 349, rejected: true, deferredFarms: 0)

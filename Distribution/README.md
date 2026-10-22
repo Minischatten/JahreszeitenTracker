@@ -28,8 +28,14 @@ APP_PATH=/pfad/zur/Release-App.app APP_CONFIG=/pfad/app-dmg.json OUTPUT=/pfad/Ap
 
 `LAYOUT_CONFIG` kann ebenfalls gesetzt werden. `DMG-Commit.txt` dokumentiert den Commit beim frischen Archivbau; bei einem übergebenen `APP_PATH` muss dessen Herkunft separat nachvollzogen werden. Die Prüfsumme liegt neben der DMG. Temporäre Builds/Archive/Werkzeuge werden nie in die DMG aufgenommen.
 
-## Private Testweitergabe
+## Signierung und Gatekeeper
 
-Die App ist ad-hoc signiert, nicht Developer-ID-signiert oder notarisiert. Nach Übertragung/Download kann Gatekeeper den Start blockieren. Eine bewusste Freigabe ist gegebenenfalls unter Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen möglich. Für öffentliche Weitergabe ist später Developer-ID-Signierung und Notarisierung erforderlich.
+Die veröffentlichte App ist **ad-hoc signiert**. Sie ist **nicht mit einer Apple Developer ID signiert und nicht von Apple notarisiert**. macOS/Gatekeeper kann deshalb nach dem Download den ersten Start blockieren.
+
+Nach einem blockierten Start kann der Benutzer die App bewusst über **Systemeinstellungen → Datenschutz & Sicherheit → Dennoch öffnen** freigeben. Diesen Schritt nur vornehmen, wenn die Herkunft der App vertrauenswürdig ist. [Weitere Informationen von Apple](https://support.apple.com/de-de/102445).
+
+Für die derzeitige kostenlose Open-Source-Hobbyprojekt-Verteilung wird bewusst kein kostenpflichtiger Apple-Developer-Account verwendet. Dieser Signierungszustand ist eine bewusste Eigenschaft der Verteilung und keine Zusage einer späteren Developer-ID-Signierung oder Notarisierung.
+
+Nutzerhinweise zur Installation und zum ersten Start stehen in der [deutschen README](../README.md#installation-und-erster-start) und auf Englisch in der [English README](../README.en.md#installation-and-first-launch).
 
 Das Volume-Icon ist Teil der DMG. Das zusätzliche Finder-Icon der äußeren DMG-Datei wird in macOS-Dateimetadaten gespeichert und kann bei einer Übertragung ohne Metadaten verloren gehen; das enthaltene Volume-Icon bleibt erhalten.

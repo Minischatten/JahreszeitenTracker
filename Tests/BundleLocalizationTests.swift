@@ -22,6 +22,11 @@ for path in CommandLine.arguments.dropFirst() {
         let data = try Data(contentsOf: file)
         let table = try PropertyListSerialization.propertyList(from: data, format: nil) as! [String: String]
         check(table["Synchronisiert"] == translation, "actual compiled \(language) translation")
+        let licenseKey = "Quellcode: GPL-3.0-only\nBranding separat lizenziert."
+        check(table[licenseKey] == (language == "de" ? licenseKey : "Source code: GPL-3.0-only\nBranding licensed separately."),
+              "About license text present in actual compiled resource")
+        check(table["Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten."] == nil,
+              "no obsolete blanket copyright entry in compiled resource")
         let localizedBundle = Bundle(url: directory)!
         check(localizedBundle.localizedString(forKey: "Synchronisiert", value: nil, table: "Localizable") == translation,
               "native lookup directly in original \(language) resources")

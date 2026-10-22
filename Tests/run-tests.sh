@@ -33,3 +33,4 @@ xcrun swiftc -module-cache-path "$test_dir/modules" \
   "$repo_dir/JahreszeitenTracker/MacNotificationService.swift" \
   "$repo_dir/Tests/ReminderTests.swift" -o "$test_dir/reminder-tests"
 "$test_dir/reminder-tests"
+xcrun swift -module-cache-path "$test_dir/modules" "$repo_dir/Tests/LicenseTests.swift" "$repo_dir"

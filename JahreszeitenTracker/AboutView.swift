@@ -52,7 +52,10 @@ struct AboutView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 8)
 
-            Text(String(localized: "Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten."))
+            VStack(spacing: 4) {
+                Text(verbatim: "© 2026 WirdSchonSoftware")
+                Text(String(localized: "Quellcode: GPL-3.0-only\nBranding separat lizenziert."))
+            }
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)

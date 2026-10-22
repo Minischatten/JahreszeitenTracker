@@ -1395,19 +1395,19 @@
         }
       }
     },
-    "Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten.": {
+    "Quellcode: GPL-3.0-only\nBranding separat lizenziert.": {
       "extractionState": "manual",
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copyright © 2026 WirdSchonSoftware. Alle Rechte vorbehalten."
+            "value": "Quellcode: GPL-3.0-only\nBranding separat lizenziert."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Copyright © 2026 WirdSchonSoftware. All rights reserved."
+            "value": "Source code: GPL-3.0-only\nBranding licensed separately."
           }
         }
       }

@@ -27,6 +27,7 @@ xcrun swiftc -parse-as-library -module-cache-path "$check_dir/modules" \
   "$repo_dir/JahreszeitenTracker/ReminderView.swift" \
   "$repo_dir/JahreszeitenTracker/FarmCardView.swift" \
   "$repo_dir/JahreszeitenTracker/SettingsView.swift" \
+  "$repo_dir/JahreszeitenTracker/AboutView.swift" \
   "$check_dir/LocalizedViews.swift" -o "$check_app/Contents/MacOS/LocalizationCheck"
 "$check_app/Contents/MacOS/LocalizationCheck" de "$repo_dir/JahreszeitenTracker/Localizable.xcstrings" "$check_dir/previews" -AppleLanguages '(de)' -AppleLocale de_DE
 "$check_app/Contents/MacOS/LocalizationCheck" en "$repo_dir/JahreszeitenTracker/Localizable.xcstrings" "$check_dir/previews" -AppleLanguages '(en)' -AppleLocale en_US
