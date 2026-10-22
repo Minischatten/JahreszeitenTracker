@@ -3,7 +3,7 @@
 Der DMG-Erstellungsprozess basiert auf dem projektübergreifend verwendeten WSS-Distribution-Workflow.
 
 - `wss-layout.json`: feste gemeinsame WSS-Layoutparameter. 640 × 480 pt Hintergrund, heller Installationsbereich oben, schwarzer Branding-Bereich unten, 240-pt-WSS-Logo, grauer Pfeil, 80-pt-Icons. Keine Karten oder zusätzlichen Installationstexte.
-- `app-dmg.json`: Appname, Projekt/Scheme, erwartete Version/Build/Mindestversion, Pfad zum bereits vorhandenen AppIcon innerhalb der App, Volume-Name und DMG-Dateiname.
+- `app-dmg.json`: Appname, Bundle-Identifier, Projekt/Scheme, erwartete Version/Build/Mindestversion, Pfad zum bereits vorhandenen AppIcon innerhalb der App, Volume-Name und DMG-Dateiname.
 - `render-dmg-background.swift`: rendert daraus den separaten Hintergrund; `WSS_Logo.png` bleibt unverändert.
 - `configure-dmg.py`: Finder-Fenster und Iconpositionen aus derselben Vorlage. `Programme` ist ein Link auf `/Applications`.
 - `set-dmg-icon.swift`: weist der DMG-Datei das bereits vorhandene AppIcon zu. `.VolumeIcon.icns` innerhalb der DMG ist eine exakte Kopie des kompilierten AppIcon; das Custom-Icon-Flag des Volumes wird gesetzt. Kein zweites Icon-Design.

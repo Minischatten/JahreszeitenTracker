@@ -9,7 +9,11 @@ func check(_ condition: Bool, _ message: String) {
 }
 for path in CommandLine.arguments.dropFirst() {
     guard let bundle = Bundle(path: path) else { fatalError("Invalid app bundle: \(path)") }
-    check(bundle.bundleIdentifier == "Yasha.JahreszeitenTracker", "original application identity")
+    check(bundle.bundleIdentifier == "com.wirdschonsoftware.jahreszeitentracker", "original application identity")
+    let declarations = bundle.infoDictionary?["UTExportedTypeDeclarations"] as? [[String: Any]] ?? []
+    let farmCardTypes = declarations.compactMap { $0["UTTypeIdentifier"] as? String }
+    check(farmCardTypes == ["com.wirdschonsoftware.jahreszeitentracker.farm-card"], "only the public farm-card drag type is exported")
+    check((declarations.first?["UTTypeConformsTo"] as? [String]) == ["public.data"], "farm-card drag type retains its data conformance")
     check(bundle.developmentLocalization == "de", "German development language in original Info.plist")
     check(Set(bundle.localizations) == Set(["de", "en"]), "original bundle advertises both languages")
     if let declared = bundle.infoDictionary?["CFBundleLocalizations"] as? [String] {

@@ -6,7 +6,7 @@
 	<array>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>yasha.jahreszeitentracker.farm-card</string>
+			<string>com.wirdschonsoftware.jahreszeitentracker.farm-card</string>
 			<key>UTTypeDescription</key>
 			<string>JahreszeitenTracker Farm Card</string>
 			<key>UTTypeConformsTo</key>

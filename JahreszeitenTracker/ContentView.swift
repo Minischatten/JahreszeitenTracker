@@ -233,7 +233,7 @@ private struct FarmDetailView: View {
 private nonisolated struct FarmCardDrag: Codable, Transferable {
     let identity: FarmIdentity?
     static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: UTType(exportedAs: "yasha.jahreszeitentracker.farm-card"))
+        CodableRepresentation(contentType: UTType(exportedAs: "com.wirdschonsoftware.jahreszeitentracker.farm-card"))
     }
 }
 

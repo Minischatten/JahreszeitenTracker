@@ -19,6 +19,7 @@ def require(condition, message):
 
 def verify(app, config):
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
+    require(info.get("CFBundleIdentifier") == config["bundleIdentifier"], "Unexpected bundle identifier")
     for key, expected in (("CFBundleShortVersionString", config["version"]),
                           ("CFBundleVersion", config["build"]),
                           ("LSMinimumSystemVersion", config["minimumSystemVersion"])):
@@ -28,6 +29,11 @@ def verify(app, config):
     require(set(architectures) == {"arm64", "x86_64"}, "Universal architectures missing")
     run("codesign", "--verify", "--deep", "--strict", str(app))
     for architecture in architectures:
+        signature = subprocess.check_output(
+            ["codesign", "--display", "--verbose=4", "--arch", architecture, str(app)],
+            stderr=subprocess.STDOUT).decode()
+        require(re.findall(r"^Identifier=(.+)$", signature, re.MULTILINE) == [config["bundleIdentifier"]],
+                f"Unexpected signing identifier ({architecture})")
         raw = run("codesign", "--display", "--arch", architecture,
                   "--entitlements", "-", "--xml", str(app))
         require(bool(raw.strip()), f"No embedded entitlements ({architecture})")
