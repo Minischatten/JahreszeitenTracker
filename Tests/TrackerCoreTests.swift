@@ -40,6 +40,7 @@ struct TrackerCoreTests {
     }
     static func main() throws {
         try real350RegressionTests()
+        try real352RegressionTests()
         for index in [0, 5, 6, 8, 9, 42, Int.max] {
             check(FT2SaveAccess.isAreaFilename("farm_16_\(index).data", slot: 16), "dynamic plot index \(index)")
         }
@@ -145,7 +146,7 @@ struct TrackerCoreTests {
     }
 
     static func real350RegressionTests() throws {
-        check(FT2VersionPolicy.confirmed == [347, 350], "only empirically approved versions confirmed")
+        check(FT2VersionPolicy.confirmed == [347, 350, 352], "only empirically approved versions confirmed")
         check(!FT2VersionPolicy.isConfirmed(348) && !FT2VersionPolicy.isConfirmed(349)
               && FT2VersionPolicy.mayRead(348) && FT2VersionPolicy.mayRead(349), "intermediate versions remain unconfirmed probes")
         // Anonymized projections of original 350 snapshots analysed on 2026-10-10.
@@ -235,6 +236,136 @@ struct TrackerCoreTests {
         check(catalog.farms[0].automaticReference == previous && catalog.farms[0].registered == true
               && FarmSyncState.forFarm(catalog.farms[0]) == .lastStandNewVersion,
               "confirmed version still rejects malformed ninth plot and retains valid reference")
+    }
+
+    static func real352RegressionTests() throws {
+        check(FT2VersionPolicy.confirmed == [347, 350, 352], "only explicitly approved versions confirmed")
+        for version in [348, 349, 351, 353] {
+            check(!FT2VersionPolicy.isConfirmed(version) && FT2VersionPolicy.mayRead(version),
+                  "unconfirmed version \(version) remains a structural probe")
+        }
+        // Anonymized projections of original 352 plot snapshots analysed on
+        // 2026-10-22: retain their real values and UInt16/UInt32/Int64 wire types.
+        let values: [(Int64, Int64, Int64, UInt8)] = [
+            (77_520_347, 639_282_158_990_000_000, 77_520_510, 0),
+            (77_520_484, 639_282_160_350_000_000, 77_520_510, 0),
+            (77_561_036, 639_282_565_870_000_000, 77_561_310, 0)]
+        func uint32(_ value: Int64) -> [UInt8] {
+            [0xce] + (0..<4).reversed().map { UInt8(truncatingIfNeeded: value >> ($0 * 8)) }
+        }
+        let bytes = values.map { g, ticks, boundary, season in
+            gzip([0xc1, 0, 0xcd, 1, 96, 15] + uint32(g) + [16] + integer(ticks)
+                 + [18] + uint32(boundary) + [21, season, 0xc8])
+        }
+        let now = try TrackerClock.date(ticks: values[2].1).addingTimeInterval(60)
+        let references = try bytes.enumerated().map {
+            try FT2SaveParser.parse($0.element, sourceName: "real-352-\($0.offset)", now: now)
+        }
+        for (index, reference) in references.enumerated() {
+            let expected = values[index]
+            check(reference.version == 352 && reference.gameTime == expected.0 && reference.savedTicks == expected.1
+                  && reference.nextBoundary == expected.2 && reference.seasonIndex == Int(expected.3),
+                  "real 352 scalar values preserved")
+            check(reference.state(at: reference.savedAt) == SeasonState(seasonIndex: Int(expected.3), remaining: Double(expected.2 - expected.0)),
+                  "real 352 saved season and remaining time reproduced")
+            check(reference.state(at: reference.savedAt.addingTimeInterval(Double(expected.2 - expected.0)))
+                  == SeasonState(seasonIndex: 1, remaining: 1020), "real 352 reference changes at exact boundary")
+        }
+        check(references[2].savedAt.timeIntervalSince(references[1].savedAt) == 40_552
+              && references[2].gameTime - references[1].gameTime == 40_552,
+              "real 352 elapsed save time and internal time agree")
+        check(references[2].nextBoundary - references[1].nextBoundary == 40 * 1020
+              && references[1].state(at: references[2].savedAt) == references[2].state(at: references[2].savedAt),
+              "real 352 reference predicts forty skipped season transitions exactly")
+        // Original 350 backup, also retained for mixed-version selection below.
+        let old350 = gzip(document(g: 76_734_771, ticks: 639_274_303_210_000_000, b: 76_735_110, s: 2, version: 350))
+        let reference350 = try FT2SaveParser.parse(old350, sourceName: "real-350-backup", now: now)
+        check(references[2].nextBoundary - reference350.nextBoundary == 810 * 1020
+              && reference350.state(at: references[2].savedAt).seasonIndex == references[2].seasonIndex
+              && abs(reference350.state(at: references[2].savedAt).remaining - 274) == 1,
+              "real 350 to 352 continuity retains season and observed one-second difference")
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("FT2Real352-" + UUID().uuidString)
+        let areas = root.appendingPathComponent("farms")
+        try FileManager.default.createDirectory(at: areas, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let mlk = root.appendingPathComponent("farms.mlk")
+        let created: Int64 = 638_506_947_420_000_000
+        let cachedCreated: Int64 = 639_267_280_840_000_000
+        try bytes[2].write(to: areas.appendingPathComponent("farm_0_0.data"))
+        try bytes[1].write(to: areas.appendingPathComponent("farm_0_1.data"))
+        try bytes[0].write(to: areas.appendingPathComponent("farm_0_2.data"))
+        try old350.write(to: areas.appendingPathComponent("farm_0_5.data"))
+        try gzip(document(g: 1027, ticks: 639_267_291_120_000_000, b: 1530, s: 1)).write(to: areas.appendingPathComponent("farm_1_0.data"))
+        // Named fields and cached 347 header mirror the real 352 registry.
+        // Personal names and irrelevant gameplay contents are omitted/redacted.
+        let plotHeaders = (0..<6).map { "{chunks:1,pName:\"Plot \($0)\",sort:\($0)}" }.joined(separator: ",")
+        let metadata = """
+        {version:352,farms:[
+          {slotIndex:0,farm:{version:352,name:"Known352",creation_time:638506947420000000,
+            ticks:77561036,last_save:639282565870000000,nextSeason:77561310,season:0,activePlot:0,Plots:[\(plotHeaders)]}},
+          {slotIndex:1,farm:{version:347,name:"Cached347",creation_time:639267280840000000,
+            ticks:1027,last_save:639267291120000000,nextSeason:1530,season:1,activePlot:0,Plots:[{chunks:1,pName:"Main",sort:0}]}}
+        ]}
+        """
+        try gzip(Array(metadata.utf8)).mapData { ($0 &- 31) ^ 255 }.write(to: mlk)
+        let scan = try FT2SaveAccess.catalogSnapshot(in: root, now: now)
+        check(scan.metadataVersion == 352 && scan.readings?.map { $0.reference?.version } == [352, 347],
+              "real mixed 347/350/352 directory parses under 352 metadata")
+        check(scan.readings?[0].reference?.sourceName == "farm_0_0.data", "embedded save time selects latest plot across versions and indices")
+        check(scan.readings?[0].metadata.creationTime == created && scan.readings?[1].metadata.creationTime == cachedCreated,
+              "352 metadata retains real creation-time identity components")
+        var catalog = FarmCatalog(); catalog.selectSource(path: root.path, bookmark: Data([1]))
+        let source = catalog.activeSourceID!
+        catalog.apply(scan, sourceID: source, confirmedVersions: [347, 350])
+        check(catalog.farms.isEmpty && catalog.sources[0].metadataNotice?.deferredFarms == 2,
+              "352 before approval defers new farm identities")
+        catalog.merge([FarmReading(metadata: FT2FarmMetadata(slotIndex: 0, creationTime: created, name: "BeforeApproval"),
+                                   reference: reference350, message: "")], sourceID: source, metadataVersion: 350)
+        let identity = catalog.farms[0].identity!
+        let trackerID = catalog.farms[0].id
+        catalog.farms[0].hidden = true
+        catalog.apply(scan, sourceID: source, confirmedVersions: [347, 350])
+        check(catalog.farms.count == 1 && catalog.farms[0].name == "BeforeApproval"
+              && FarmSyncState.forFarm(catalog.farms[0], confirmedVersions: [347, 350]) == .unconfirmedVersion,
+              "pre-approval merge preserves name, warns existing farm and defers new farm")
+        catalog.apply(scan, sourceID: source)
+        check(catalog.farms.count == 2 && catalog.farms[0].identity == identity && catalog.farms[0].id == trackerID
+              && catalog.farms[0].hidden && catalog.farms[0].name == "Known352"
+              && catalog.sources[0].metadataNotice == nil && catalog.farms.allSatisfy { FarmSyncState.forFarm($0) == .synchronized },
+              "authoritative 352 upgrades metadata and trust while preserving identity and hidden state")
+        let restored = FarmCatalog.restored(current: try JSONEncoder().encode(catalog), now: now)
+        check(restored.farms[0].automaticReference?.version == 352 && restored.farms[0].identity == identity && restored.farms[0].hidden,
+              "352 reference provenance and preferences survive persistence")
+        let cachedReference = catalog.farms[1].automaticReference
+        try metadataDocument([(0, created, "Renamed352")], version: 352).write(to: mlk)
+        catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
+        check(catalog.farms[1].isInactive && catalog.farms[1].automaticReference == cachedReference
+              && catalog.farms[0].identity == identity && catalog.farms[0].name == "Renamed352",
+              "confirmed complete 352 registry can rename and unregister without erasing references")
+        let newCreation = values[2].1 - 10_000_000
+        try metadataDocument([(0, created, "Renamed352"), (1, newCreation, "ReusedSlot")], version: 352).write(to: mlk)
+        catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
+        check(catalog.farms.count == 3 && catalog.farms[1].isInactive && catalog.farms[2].identity?.creationTime == newCreation
+              && catalog.farms[2].automaticReference == nil, "352 slot reuse cannot consume old 347 plot or reactivate prior identity")
+        let previous = catalog.farms[0].automaticReference
+        let bad = areas.appendingPathComponent("farm_0_8.data")
+        try gzip(document(g: values[2].0, ticks: values[2].1 + 10_000_000, b: values[2].2, s: 4, version: 352)).write(to: bad)
+        catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
+        check(catalog.farms[0].automaticReference == previous && catalog.farms[0].registered == true
+              && FarmSyncState.forFarm(catalog.farms[0]) == .lastStandNewVersion,
+              "confirmed 352 still rejects invalid season data and preserves last valid reference")
+        try FileManager.default.removeItem(at: bad)
+        try gzip(document(g: values[2].0, ticks: values[2].1 + 20_000_000, b: values[2].2, s: 4, version: 353)).write(to: bad)
+        catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
+        check(catalog.farms[0].automaticReference == previous && catalog.farms[0].compatibility?.rejectedVersions == [353]
+              && FarmSyncState.forFarm(catalog.farms[0]) == .lastStandNewVersion,
+              "confirmed 352 cannot mask an incompatible future 353 plot")
+        let records = catalog.farms
+        catalog.merge([], sourceID: source, metadataVersion: 353)
+        check(catalog.farms.map(\.identity) == records.map(\.identity) && catalog.farms.map(\.registered) == records.map(\.registered)
+              && catalog.farms.map(\.automaticReference) == records.map(\.automaticReference),
+              "future 353 missing metadata cannot unregister farms or erase references")
     }
 
     static func versionCompatibilityTests() throws {

@@ -133,8 +133,8 @@ struct LocalizationTests {
                 : "It is now \(seasonNames[index]) on “\(farmName)”."
             check(content.body == expectedBody, "complete localized notification template preserves dynamic farm name")
         }
-        manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 351, rejected: false, deferredFarms: 0)
-        check(manager.catalogVersionNotice?.contains("351") == true, "351 warning stays visible")
+        manager.catalog.sources[0].metadataNotice = MetadataNotice(version: 353, rejected: false, deferredFarms: 0)
+        check(manager.catalogVersionNotice?.contains("353") == true, "353 warning stays visible")
         session.showHiddenFarms = false
         for displayedCount in [1, 4] {
             for index in manager.farms.indices {
@@ -145,14 +145,14 @@ struct LocalizationTests {
                   "warning overview protects startup with \(displayedCount) cards")
             try render(ContentView().environmentObject(manager).environmentObject(session).environmentObject(reminders).environmentObject(router),
                        size: NSSize(width: 640, height: 950),
-                       to: output.appendingPathComponent("\(language)-351-warning-\(displayedCount)-cards.png"),
+                       to: output.appendingPathComponent("\(language)-353-warning-\(displayedCount)-cards.png"),
                        expectNeutralFocus: true)
         }
         print("Passed \(checks) bundled localization/UI checks (\(language)); resources: \(Bundle.main.resourcePath ?? "")")
     }
 
     static func checkStartupFocus() throws {
-        check(!FT2VersionPolicy.isConfirmed(351), "351 remains unconfirmed during focus regression")
+        check(!FT2VersionPolicy.isConfirmed(353), "353 remains unconfirmed during focus regression")
         for cardCount in 1...2 {
             for backwards in [false, true] {
                 let root = NSView(frame: NSRect(x: 0, y: 0, width: 640, height: 440))
@@ -171,7 +171,7 @@ struct LocalizationTests {
                 check(window.initialFirstResponder === focus && window.firstResponder === focus,
                       "late overview activation establishes neutral startup responder")
                 // Simulate an inserted warning and a subsequent control assignment.
-                root.addSubview(NSTextField(labelWithString: "Spielstandversion 351"))
+                root.addSubview(NSTextField(labelWithString: "Spielstandversion 353"))
                 check(window.makeFirstResponder(buttons[0]), "control can accept normal keyboard focus")
                 focus.layout()
                 check(window.firstResponder === focus, "later warning layout retains neutral startup focus")
