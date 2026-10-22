@@ -1,4 +1,7 @@
-# JahreszeitenTracker
+<p align="center">
+  <img src="JahreszeitenTracker/Assets.xcassets/AppIcon.appiconset/AppIcon-256.png" width="128" height="128" alt="JahreszeitenTracker App Icon">
+</p>
+<h1 align="center">JahreszeitenTracker</h1>
 
 **[English version](README.en.md)**
 
