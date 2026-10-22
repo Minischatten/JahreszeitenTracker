@@ -10,6 +10,7 @@ Copyright © 2026 WirdSchonSoftware. Die Rechte an den nachstehend genannten Gra
 
 Die separate Behandlung betrifft ausschließlich diese Grafikdateien:
 
+- `Documentation/Branding/JahreszeitenTracker-Icon.png`
 - `Distribution/WSS_Logo.png`
 - `JahreszeitenTracker/Assets.xcassets/WSS_Logo.imageset/WSS_Logo.png`
 - `JahreszeitenTracker/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`

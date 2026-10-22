@@ -10,6 +10,7 @@ Copyright © 2026 WirdSchonSoftware. Rights in the graphics listed below are res
 
 The separate treatment applies exclusively to these graphics files:
 
+- `Documentation/Branding/JahreszeitenTracker-Icon.png`
 - `Distribution/WSS_Logo.png`
 - `JahreszeitenTracker/Assets.xcassets/WSS_Logo.imageset/WSS_Logo.png`
 - `JahreszeitenTracker/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`

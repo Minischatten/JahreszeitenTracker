@@ -26,11 +26,12 @@ let assetRoot = root.appendingPathComponent("JahreszeitenTracker/Assets.xcassets
 let iconFiles = try FileManager.default.contentsOfDirectory(atPath: assetRoot.appendingPathComponent("AppIcon.appiconset").path)
     .filter { $0.hasSuffix(".png") }
 var expected = Set(iconFiles.map { "JahreszeitenTracker/Assets.xcassets/AppIcon.appiconset/" + $0 })
+expected.insert("Documentation/Branding/JahreszeitenTracker-Icon.png")
 expected.insert("Distribution/WSS_Logo.png")
 expected.insert("JahreszeitenTracker/Assets.xcassets/WSS_Logo.imageset/WSS_Logo.png")
 let listed = Set(branding.components(separatedBy: "\n").filter { $0.hasPrefix("- `") && $0.hasSuffix(".png`") }
     .map { String($0.dropFirst(3).dropLast()) })
-check(expected.count == 12 && listed == expected, "exact separate-branding PNG inventory, no broad asset exclusion")
+check(expected.count == 13 && listed == expected, "exact separate-branding PNG inventory, no broad asset exclusion")
 for path in listed {
     check(FileManager.default.fileExists(atPath: root.appendingPathComponent(path).path), "reserved graphic exists")
 }
