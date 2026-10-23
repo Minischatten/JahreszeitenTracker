@@ -1,6 +1,6 @@
 # Reusable WirdSchonSoftware DMG style
 
-**[Deutsch](README.md)**
+**[Deutsche Version](README.md)**
 
 If these documentation translations unintentionally differ in substance, the German version takes precedence.
 

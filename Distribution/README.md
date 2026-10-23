@@ -1,6 +1,6 @@
 # Wiederverwendbarer WirdSchonSoftware-DMG-Stil
 
-**[English](README.en.md)**
+**[English version](README.en.md)**
 
 Der DMG-Erstellungsprozess basiert auf dem projektübergreifend verwendeten WSS-Distribution-Workflow.
 
