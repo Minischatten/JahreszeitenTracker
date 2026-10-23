@@ -214,6 +214,16 @@ keine lokalisierten Strings als Identitäten oder fachliche Entscheidungswerte.
 - Keine Original-Saves, FT2-/Steam-DLLs oder dekompilierten Quelltexte mitliefern.
   Testprojektionen enthalten kleine technische Einzelwerte; keine vollständigen Saves.
 
+## WSS-Website
+
+`wirdschonsoftware.com` besitzt eine minimale statische Landingpage auf Deutsch und
+Englisch. WirdSchonSoftware wird ausdrücklich als gemeinsamer Name für private
+Softwareprojekte dargestellt, nicht als Firma oder Unternehmen. Der JahreszeitenTracker
+wird als öffentliches Projekt mit Verweis auf sein GitHub-Repository vorgestellt.
+Impressum und Datenschutzerklärung sind vorhanden. Keine Analytics, kein Tracking,
+keine Cookies und keine extern geladenen Assets. HTTPS ist eingerichtet; HTTP wird
+auf HTTPS umgeleitet, HSTS ist aktiviert.
+
 ## Verifikation bei Änderungen
 
 - `sh Tests/run-tests.sh`: Core-/Parser-/Katalog-, Manager-, Reminder- und Lizenzprüfungen.
@@ -239,24 +249,19 @@ keine lokalisierten Strings als Identitäten oder fachliche Entscheidungswerte.
 Die folgenden Prioritäten und externen Beobachtungen stammen aus dem aktuellen
 Arbeitsauftrag; sie sind nicht als bereits implementierter Repository-Stand zu lesen.
 
-1. **WSS-Website / Landingpage**
-   `wirdschonsoftware.com` wird von App und Dokumentation verwendet. Nach aktuellem
-   Arbeitsauftrag existiert dort noch keine sinnvolle Website. Als nächster Schritt
-   minimale statische WSS-Landingpage: Branding, kurze Projektinformation zum
-   JahreszeitenTracker und GitHub-Verweis; HTTPS/Erreichbarkeit sauber konfigurieren.
-2. **First-Run-Onboarding**
+1. **First-Run-Onboarding**
    Prüfen, ob Einstellungen bei wirklich unkonfigurierter Installation automatisch
    geöffnet werden sollten. Echten First Run ohne konfigurierte Quelle von einem
    konfigurierten, vorübergehend nicht erreichbaren/nicht lesbaren Ordner unterscheiden.
-3. **Automatische Updateprüfung**
+2. **Automatische Updateprüfung**
    Konzept über GitHub-Veröffentlichungen untersuchen, insbesondere Sparkle-Eignung.
    Sicherheits-, Signatur-, Appcast- und Distributionsanforderungen berücksichtigen;
    noch keine konkrete Implementierungsentscheidung voraussetzen.
-4. **DMG-Dateiicon nach Download**
+3. **DMG-Dateiicon nach Download**
    Nach beobachtetem Downloadweg geht das äußere Finder-Icon verloren, während das
    Volume-Icon erhalten bleibt. Bei künftigem Release portable Erhaltung oder bewussten
    Verzicht untersuchen. Kein aktueller Funktionsfehler, kein Anlass für neuen Release.
-5. **Pflanz-/Ernteinformationen**
+4. **Pflanz-/Ernteinformationen**
    Größere mögliche Erweiterung: verlässlich aus FT2-Daten ermitteln, was aktuell
    saisonal anpflanzbar bzw. bei relevanten Pflanzen/Kräutern erntbar ist. Änderungen
    zwischen FT2-Versionen berücksichtigen. Keine Zusage für Version 2.0 oder einen Release.
