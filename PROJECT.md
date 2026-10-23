@@ -1,5 +1,11 @@
 # JahreszeitenTracker – technischer Arbeitskontext
 
+**[English version](PROJECT_EN.md)**
+
+`PROJECT_EN.md` ist die englische Übersetzung. Bei Änderungen an technischen oder
+projektbezogenen Aussagen beide Fassungen gemeinsam aktualisieren; `PROJECT.md`
+bleibt die maßgebliche Fassung.
+
 Diese Datei dient als kompakter Einstieg für die Projektarbeit und Codex. Maßgeblich
 bleiben Code, Tests und Build-Konfigurationen. Bei fachlichen Änderungen diesen
 Kontext mitpflegen; keine vollständige Entwicklungschronik führen.
