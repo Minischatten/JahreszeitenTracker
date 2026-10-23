@@ -1,5 +1,7 @@
 # Wiederverwendbarer WirdSchonSoftware-DMG-Stil
 
+**[English](README.en.md)**
+
 Der DMG-Erstellungsprozess basiert auf dem projektübergreifend verwendeten WSS-Distribution-Workflow.
 
 - `wss-layout.json`: feste gemeinsame WSS-Layoutparameter. 640 × 480 pt Hintergrund, heller Installationsbereich oben, schwarzer Branding-Bereich unten, 240-pt-WSS-Logo, grauer Pfeil, 80-pt-Icons. Keine Karten oder zusätzlichen Installationstexte.
