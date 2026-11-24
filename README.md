@@ -23,7 +23,7 @@ Kostenloses Open-Source-Hobbyprojekt für **Farm Together 2** auf macOS. Der Jah
 
 In den Einstellungen den FT2-Spielstandordner ausdrücklich auswählen. Der Tracker erkennt die Hauptfarmen darin automatisch. **FT2-Spielstände werden ausschließlich gelesen und niemals verändert.**
 
-Derzeit bestätigte FT2-Spielstandversionen: **347, 350 und 352**. Die Zwischenversionen 348, 349 und 351 sind nicht bestätigt. Neuere unbekannte Versionen werden erkannt und defensiv geprüft. Nicht sicher lesbare Daten ersetzen keine gültige Referenz; unbestätigte Metadaten sind keine autoritative Grundlage für die Entfernung bekannter Farmen. Eine Versionsnummer allein ist keine Kompatibilitätsfreigabe.
+Derzeit bestätigte FT2-Spielstandversionen: **347, 350, 352 und 354**. Die Zwischenversionen 348, 349, 351 und 353 sind nicht bestätigt. Neuere unbekannte Versionen werden erkannt und defensiv geprüft. Nicht sicher lesbare Daten ersetzen keine gültige Referenz; unbestätigte Metadaten sind keine autoritative Grundlage für die Entfernung bekannter Farmen. Eine Versionsnummer allein ist keine Kompatibilitätsfreigabe.
 
 ## Installation und erster Start
 

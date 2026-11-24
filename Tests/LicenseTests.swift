@@ -18,7 +18,7 @@ let readme = try text("README.md")
 let branding = try text("BRANDING.md")
 check(readme.contains("ausschließlich Version 3 (SPDX: GPL-3.0-only)"), "explicit version-3-only grant")
 check(readme.contains("[LICENSE](LICENSE)") && readme.contains("[BRANDING.md](BRANDING.md)"), "license and branding navigation")
-check(readme.contains("347, 350 und 352"), "documented confirmed save versions")
+check(readme.contains("347, 350, 352 und 354"), "documented confirmed save versions")
 for document in [readme, branding] {
     check(!document.contains("GPL-3.0-" + "or-later"), "no later-version project grant")
 }

@@ -3,10 +3,10 @@
   "bundleIdentifier": "com.wirdschonsoftware.jahreszeitentracker",
   "project": "JahreszeitenTracker.xcodeproj",
   "scheme": "JahreszeitenTracker",
-  "version": "1.0.2",
-  "build": "4",
+  "version": "1.0.3",
+  "build": "5",
   "minimumSystemVersion": "14.0",
   "appIcon": "Contents/Resources/AppIcon.icns",
   "volumeName": "JahreszeitenTracker",
-  "dmgFile": "JahreszeitenTracker-1.0.2.dmg"
+  "dmgFile": "JahreszeitenTracker-1.0.3.dmg"
 }

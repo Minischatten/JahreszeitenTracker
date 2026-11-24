@@ -80,7 +80,7 @@ timestamps before/after reading. Symlinked plot directories are rejected;
 ## Versions and trust model
 
 Central approval: `FT2VersionPolicy.confirmed` in `TrackerCore.swift`:
-**347, 350, 352**. **348, 349 and 351 are not confirmed.**
+**347, 350, 352, 354**. **348, 349, 351 and 353 are not confirmed.**
 `mayRead` permits confirmed versions and versions greater than 347 for defensive
 reading attempts. Structurally readable does not mean confirmed; new approvals
 require real-data analysis and practical testing, not automatic confirmation of
@@ -201,7 +201,7 @@ never use localized strings as identities or values for domain decisions.
 
 ## Release, distribution and licensing
 
-- Currently configured version **1.0.2 (Build 4)** in the project and `Distribution/app-dmg.json`.
+- Currently configured version **1.0.3 (Build 5)** in the project and `Distribution/app-dmg.json`.
 - Permanent bundle ID: `com.wirdschonsoftware.jahreszeitentracker` (Debug/Release).
   Custom D&D type: `com.wirdschonsoftware.jahreszeitentracker.farm-card`.
 - WSS DMG: `Distribution/build-dmg.sh`, `wss-layout.json`, `app-dmg.json`; do not

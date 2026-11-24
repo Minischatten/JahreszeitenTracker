@@ -85,7 +85,7 @@ Pfad kann eine neue Quellen-ID erzeugen. Diese Quellenzusammenführung ist offen
 
 ## Lesen von farms.mlk
 
-Aktueller FT2-Build, Version 347:
+Beobachteter Metadatenstand, Version 347:
 
 1. SaveStream.ConvertFromByte: `((byte XOR 255) + 31) modulo 256`.
 2. Gzip entpacken mit CRC-/ISIZE-Prüfung, genau ein Stream, keine Restdaten.
@@ -162,7 +162,7 @@ ENABLE_USER_SELECTED_FILES=readonly. Betriebssystembedingte Zugriffserfassung
 wird von der App weder angefordert noch verändert.
 
 Maximal 16 MiB komprimiert, 64 MiB entpackt, 64 Verschachtelungen und vier Millionen
-Werte. Die Bereichsparsing-Regeln bleiben bestehen: bestätigte Version 347 oder
+Werte. Die Bereichsparsing-Regeln bleiben bestehen: eine bestätigte Version oder
 eine strukturell validierte neuere Probeversion, keine doppelten
 Objektfelder, gültige Zeiten, Saison 0...3, Restzeit >0 und <=1020, höchstens fünf
 Minuten zukünftiger Speicherzeitpunkt. Neuere Saves ersetzen die Referenz; ältere,
@@ -216,7 +216,7 @@ dem Mac geprüft werden. Ein unsigned Build bestätigt diese Zugriffswege nicht.
 ## Versionsvertrauen
 
 `FT2VersionPolicy.confirmed` in TrackerCore.swift ist die zentrale Freigabeliste,
-aktuell `{347}`. Höhere Versionen werden defensiv mit denselben Struktur-, Typ-,
+aktuell `{347, 350, 352, 354}`. Höhere Versionen werden defensiv mit denselben Struktur-, Typ-,
 Datums- und Saisonprüfungen gelesen. Ältere unbekannte Versionen bleiben abgelehnt.
 Neue Typbytes werden nicht geraten. Eine Versionsnummer wird nur gemeldet, wenn
 sie tatsächlich aus dem Dokument gelesen werden konnte; ein beschädigter Gzip-

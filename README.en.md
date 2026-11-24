@@ -23,7 +23,7 @@ A free, open-source hobby project for **Farm Together 2** on macOS. Jahreszeiten
 
 Explicitly select the FT2 save folder in Settings. The tracker automatically detects the main farms within it. **FT2 saves are read only and are never modified.**
 
-Currently confirmed FT2 save versions: **347, 350 and 352**. The intermediate versions 348, 349 and 351 are not confirmed. Newer, unknown versions are detected and checked conservatively. Data that cannot be read safely does not replace a valid reference; unconfirmed metadata is not an authoritative basis for removing known farms. A version number alone does not establish compatibility.
+Currently confirmed FT2 save versions: **347, 350, 352 and 354**. The intermediate versions 348, 349, 351 and 353 are not confirmed. Newer, unknown versions are detected and checked conservatively. Data that cannot be read safely does not replace a valid reference; unconfirmed metadata is not an authoritative basis for removing known farms. A version number alone does not establish compatibility.
 
 ## Installation and first launch
 

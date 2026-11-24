@@ -80,7 +80,7 @@ mit `O_RDONLY`/`O_NOFOLLOW`, akzeptiert nur reguläre Dateien und prüft Größe
 ## Versionen und Vertrauensmodell
 
 Zentrale Freigabe: `FT2VersionPolicy.confirmed` in `TrackerCore.swift`:
-**347, 350, 352**. **348, 349 und 351 sind nicht bestätigt.**
+**347, 350, 352, 354**. **348, 349, 351 und 353 sind nicht bestätigt.**
 `mayRead` erlaubt bestätigte Versionen sowie Versionen größer als 347 zum defensiven
 Leseversuch. Strukturell lesbar bedeutet nicht bestätigt; neue Freigaben benötigen
 reale Datenprüfung und Praxistest, keine automatische Bestätigung von Zwischenversionen.
@@ -198,7 +198,7 @@ keine lokalisierten Strings als Identitäten oder fachliche Entscheidungswerte.
 
 ## Release, Distribution und Lizenz
 
-- Aktuelle konfigurierte Version **1.0.2 (Build 4)** in Projekt und `Distribution/app-dmg.json`.
+- Aktuelle konfigurierte Version **1.0.3 (Build 5)** in Projekt und `Distribution/app-dmg.json`.
 - Dauerhafte Bundle-ID: `com.wirdschonsoftware.jahreszeitentracker` (Debug/Release).
   Eigener D&D-Typ: `com.wirdschonsoftware.jahreszeitentracker.farm-card`.
 - WSS-DMG: `Distribution/build-dmg.sh`, `wss-layout.json`, `app-dmg.json`; kein Layout

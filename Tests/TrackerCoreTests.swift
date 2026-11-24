@@ -41,6 +41,7 @@ struct TrackerCoreTests {
     static func main() throws {
         try real350RegressionTests()
         try real352RegressionTests()
+        try real354RegressionTests()
         for index in [0, 5, 6, 8, 9, 42, Int.max] {
             check(FT2SaveAccess.isAreaFilename("farm_16_\(index).data", slot: 16), "dynamic plot index \(index)")
         }
@@ -146,7 +147,7 @@ struct TrackerCoreTests {
     }
 
     static func real350RegressionTests() throws {
-        check(FT2VersionPolicy.confirmed == [347, 350, 352], "only empirically approved versions confirmed")
+        check(FT2VersionPolicy.confirmed == [347, 350, 352, 354], "only empirically approved versions confirmed")
         check(!FT2VersionPolicy.isConfirmed(348) && !FT2VersionPolicy.isConfirmed(349)
               && FT2VersionPolicy.mayRead(348) && FT2VersionPolicy.mayRead(349), "intermediate versions remain unconfirmed probes")
         // Anonymized projections of original 350 snapshots analysed on 2026-10-10.
@@ -239,8 +240,8 @@ struct TrackerCoreTests {
     }
 
     static func real352RegressionTests() throws {
-        check(FT2VersionPolicy.confirmed == [347, 350, 352], "only explicitly approved versions confirmed")
-        for version in [348, 349, 351, 353] {
+        check(FT2VersionPolicy.confirmed == [347, 350, 352, 354], "only explicitly approved versions confirmed")
+        for version in [348, 349, 351, 353, 355] {
             check(!FT2VersionPolicy.isConfirmed(version) && FT2VersionPolicy.mayRead(version),
                   "unconfirmed version \(version) remains a structural probe")
         }
@@ -356,16 +357,58 @@ struct TrackerCoreTests {
               && FarmSyncState.forFarm(catalog.farms[0]) == .lastStandNewVersion,
               "confirmed 352 still rejects invalid season data and preserves last valid reference")
         try FileManager.default.removeItem(at: bad)
-        try gzip(document(g: values[2].0, ticks: values[2].1 + 20_000_000, b: values[2].2, s: 4, version: 353)).write(to: bad)
+        try gzip(document(g: values[2].0, ticks: values[2].1 + 20_000_000, b: values[2].2, s: 4, version: 355)).write(to: bad)
         catalog.apply(try FT2SaveAccess.catalogSnapshot(in: root, now: now), sourceID: source)
-        check(catalog.farms[0].automaticReference == previous && catalog.farms[0].compatibility?.rejectedVersions == [353]
+        check(catalog.farms[0].automaticReference == previous && catalog.farms[0].compatibility?.rejectedVersions == [355]
               && FarmSyncState.forFarm(catalog.farms[0]) == .lastStandNewVersion,
-              "confirmed 352 cannot mask an incompatible future 353 plot")
+              "confirmed 352 cannot mask an incompatible future 355 plot")
         let records = catalog.farms
-        catalog.merge([], sourceID: source, metadataVersion: 353)
+        catalog.merge([], sourceID: source, metadataVersion: 355)
         check(catalog.farms.map(\.identity) == records.map(\.identity) && catalog.farms.map(\.registered) == records.map(\.registered)
               && catalog.farms.map(\.automaticReference) == records.map(\.automaticReference),
-              "future 353 missing metadata cannot unregister farms or erase references")
+              "future 355 missing metadata cannot unregister farms or erase references")
+    }
+
+    static func real354RegressionTests() throws {
+        // Timing scalars only, projected from local 352 and 354 snapshots.
+        let now = try TrackerClock.date(ticks: 639_310_605_120_000_000)
+        let previous = try FT2SaveParser.parse(
+            gzip(document(g: 77_821_529, ticks: 639_285_170_810_000_000,
+                          b: 77_822_430, s: 0, version: 352)), sourceName: "farm_0_1.data", now: now)
+        let latest = try FT2SaveParser.parse(
+            gzip(document(g: 80_364_953, ticks: 639_310_605_120_000_000,
+                          b: 80_365_290, s: 1, version: 354)), sourceName: "farm_0_0.data", now: now)
+        check(latest.version == 354 && latest.state(at: now) == SeasonState(seasonIndex: 1, remaining: 337),
+              "354 timing projection reproduces the saved state")
+        check(latest.state(at: now.addingTimeInterval(337)) == SeasonState(seasonIndex: 2, remaining: 1020),
+              "354 uses the existing season boundary")
+        check(latest.nextBoundary - previous.nextBoundary == 2493 * 1020
+              && previous.state(at: now) == SeasonState(seasonIndex: 1, remaining: 330),
+              "352 to 354 continuity preserves season and observed seven-second offset")
+
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let areas = root.appendingPathComponent("farms")
+        try FileManager.default.createDirectory(at: areas, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let created = previous.savedTicks - 10_000_000
+        try metadataDocument([(0, created, "Test Farm")], version: 354).write(to: root.appendingPathComponent("farms.mlk"))
+        for ref in [previous, latest] {
+            try gzip(document(g: ref.gameTime, ticks: ref.savedTicks, b: ref.nextBoundary,
+                              s: Int64(ref.seasonIndex), version: Int64(ref.version)))
+                .write(to: areas.appendingPathComponent(ref.sourceName))
+        }
+        let scan = try FT2SaveAccess.catalogSnapshot(in: root, now: now)
+        check(scan.metadataVersion == 354 && scan.readings?.first?.reference == latest,
+              "354 registry selects latest plot by embedded timestamp among mixed versions")
+        var catalog = FarmCatalog()
+        catalog.selectSource(path: root.path, bookmark: Data([1]))
+        let source = catalog.activeSourceID!
+        catalog.apply(scan, sourceID: source, confirmedVersions: [347, 350, 352])
+        check(catalog.farms.isEmpty, "354 registry is non-authoritative before approval")
+        catalog.apply(scan, sourceID: source)
+        check(catalog.farms.count == 1 && catalog.farms[0].identity == FarmIdentity(sourceID: source, slotIndex: 0, creationTime: created)
+              && FarmSyncState.forFarm(catalog.farms[0]) == .synchronized,
+              "confirmed 354 registry establishes the expected identity and synchronized state")
     }
 
     static func versionCompatibilityTests() throws {
